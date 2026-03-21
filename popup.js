@@ -46,11 +46,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let proxies = [];
   let activeProxyId = null;
+  let selectedProxyType = 'HTTP';
+
+  const proxyTypeBtns = document.querySelectorAll('.segment-btn');
+  proxyTypeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      proxyTypeBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedProxyType = btn.dataset.type;
+    });
+  });
 
   toggleBtn.addEventListener('click', () => {
     if (formContainer.style.display === 'none') {
       formContainer.style.display = 'block';
-      toggleBtn.textContent = 'Close Form';
+      toggleBtn.textContent = 'Close';
     } else {
       formContainer.style.display = 'none';
       toggleBtn.textContent = '+ Add New Proxy';
@@ -64,10 +74,11 @@ document.addEventListener('DOMContentLoaded', () => {
     renderProxies();
   });
 
-  form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', (e) => {
     e.preventDefault();
     const newProxy = {
       id: Date.now().toString(),
+      type: selectedProxyType,
       name: document.getElementById('name').value,
       host: document.getElementById('host').value,
       port: parseInt(document.getElementById('port').value, 10),
@@ -79,6 +90,11 @@ document.addEventListener('DOMContentLoaded', () => {
     saveProxies();
     renderProxies();
     form.reset();
+
+    // Reset proxy type to default HTTP
+    proxyTypeBtns.forEach(b => b.classList.remove('active'));
+    document.querySelector('.segment-btn[data-type="HTTP"]').classList.add('active');
+    selectedProxyType = 'HTTP';
 
     // Hide form after successful addition
     formContainer.style.display = 'none';
@@ -114,6 +130,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const isActive = proxy.id === activeProxyId;
       const el = document.createElement('div');
       el.className = `proxy-item ${isActive ? 'active' : ''}`;
+
+      const pType = proxy.type || 'HTTP';
+      const badgeEl = document.createElement('div');
+      badgeEl.className = 'proxy-type-badge';
+      badgeEl.textContent = pType;
+      el.appendChild(badgeEl);
 
       const header = document.createElement('div');
       header.className = 'proxy-header';

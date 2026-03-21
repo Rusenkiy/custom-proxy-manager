@@ -102,6 +102,7 @@
       gap: 10px;
     }
     .proxy-item {
+      position: relative;
       background: var(--item-bg);
       border: 1px solid var(--border);
       padding: 10px;
@@ -110,6 +111,16 @@
       flex-direction: column;
       gap: 8px;
       transition: border-color 0.2s, box-shadow 0.2s, background-color 0.3s;
+    }
+    .proxy-type-badge {
+      position: absolute;
+      top: 6px;
+      right: 8px;
+      font-size: 10px;
+      font-style: italic;
+      color: var(--text-muted);
+      opacity: 0.8;
+      pointer-events: none;
     }
     .proxy-item.active {
       border-color: #28a745;
@@ -182,6 +193,45 @@
     .ping-fail { color: #dc3545; }
     .ping-loading { color: #f0ad4e; }
     
+    .segmented-control {
+      display: flex;
+      width: 100%;
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: var(--button-shadow);
+      border: 1px solid var(--border);
+      margin-bottom: 2px;
+    }
+    button.segment-btn {
+      flex: 1;
+      height: 36px;
+      background-color: var(--item-bg);
+      color: var(--text-muted);
+      border-radius: 0;
+      padding: 0;
+      border-right: 1px solid var(--border);
+      border-top: none;
+      border-bottom: none;
+      border-left: none;
+      box-shadow: none;
+    }
+    button.segment-btn:last-child {
+      border-right: none;
+    }
+    button.segment-btn:hover {
+      background-color: var(--btn-hover);
+      box-shadow: none;
+      transform: none;
+    }
+    button.segment-btn.active {
+      background-color: #007bff;
+      color: white;
+      border-right-color: #007bff;
+    }
+    button.segment-btn.active:hover {
+      background-color: #0056b3;
+    }
+    
     .top-bar {
       display: flex;
       gap: 10px;
@@ -236,6 +286,11 @@
   <div id="addProxyFormContainer" style="display: none; margin-bottom: 15px;">
     <h2>Add Proxy</h2>
     <form id="add-proxy-form">
+      <div class="segmented-control" id="proxy-type-selector">
+        <button type="button" class="segment-btn active" data-type="HTTP">HTTP</button>
+        <button type="button" class="segment-btn" data-type="HTTPS">HTTPS</button>
+        <button type="button" class="segment-btn" data-type="SOCKS5">SOCKS5</button>
+      </div>
       <input type="text" id="name" placeholder="Custom Name" required>
       <input type="text" id="host" placeholder="IP/Host" required>
       <input type="number" id="port" placeholder="Port" required>

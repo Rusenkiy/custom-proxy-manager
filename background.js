@@ -31,7 +31,7 @@ async function applyConfig(proxy) {
     mode: "fixed_servers",
     rules: {
       singleProxy: {
-        scheme: "http",
+        scheme: proxy.type ? proxy.type.toLowerCase() : "http",
         host: proxy.host,
         port: parseInt(proxy.port, 10)
       },
