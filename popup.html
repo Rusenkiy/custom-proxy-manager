@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Proxy Manager</title>
+  <style>
+    :root {
+      --bg: #f9f9f9;
+      --text: #333;
+      --item-bg: #fff;
+      --border: #e1e1e1;
+      --input-bg: #fff;
+      --input-border: #ccc;
+      --btn-hover: #e9e9e9;
+      --text-muted: #666;
+      --button-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not(.light) {
+        --bg: #121212;
+        --text: #e0e0e0;
+        --item-bg: #1e1e1e;
+        --border: #333;
+        --input-bg: #2d2d2d;
+        --input-border: #444;
+        --btn-hover: #2a2a2a;
+        --text-muted: #999;
+        --button-shadow: 0 2px 5px rgba(0, 0, 0, 0.6);
+      }
+    }
+    html.dark {
+      --bg: #121212;
+      --text: #e0e0e0;
+      --item-bg: #1e1e1e;
+      --border: #333;
+      --input-bg: #2d2d2d;
+      --input-border: #444;
+      --btn-hover: #2a2a2a;
+      --text-muted: #999;
+      --button-shadow: 0 2px 5px rgba(0, 0, 0, 0.6);
+    }
+    html.light {
+      --bg: #f9f9f9;
+      --text: #333;
+      --item-bg: #fff;
+      --border: #e1e1e1;
+      --input-bg: #fff;
+      --input-border: #ccc;
+      --btn-hover: #e9e9e9;
+      --text-muted: #666;
+      --button-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      width: 320px;
+      margin: 0;
+      padding: 16px;
+      background-color: var(--bg);
+      color: var(--text);
+      transition: background-color 0.3s, color 0.3s;
+    }
+    h2 {
+      margin-top: 0;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 20px;
+      background: var(--item-bg);
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+    input {
+      padding: 8px;
+      border: 1px solid var(--input-border);
+      border-radius: 4px;
+      font-size: 13px;
+      background-color: var(--input-bg);
+      color: var(--text);
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      transition: background-color 0.2s;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .proxy-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .proxy-item {
+      background: var(--item-bg);
+      border: 1px solid var(--border);
+      padding: 10px;
+      border-radius: 6px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: border-color 0.2s, box-shadow 0.2s, background-color 0.3s;
+    }
+    .proxy-item.active {
+      border-color: #28a745;
+      box-shadow: 0 0 0 1px #28a745;
+    }
+    .proxy-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .proxy-name-container {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .proxy-name {
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .edit-input {
+      font-size: 13px;
+      padding: 3px 6px;
+      border: 1px solid var(--input-border);
+      border-radius: 3px;
+      width: 130px;
+      background-color: var(--input-bg);
+      color: var(--text);
+    }
+    button.btn-icon {
+      background-color: transparent;
+      color: var(--text-muted);
+      border: none;
+      padding: 2px 4px;
+      cursor: pointer;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    button.btn-icon:hover {
+      background-color: var(--btn-hover);
+      color: var(--text);
+    }
+    .proxy-address {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .proxy-actions {
+      display: flex;
+      gap: 6px;
+    }
+    .proxy-actions button {
+      flex: 1;
+      padding: 6px;
+    }
+    .btn-connect { background-color: #28a745; }
+    .btn-connect:hover { background-color: #218838; }
+    .btn-disconnect { background-color: #dc3545; }
+    .btn-disconnect:hover { background-color: #c82333; }
+    .btn-ping { background-color: #6c757d; }
+    .btn-ping:hover { background-color: #5a6268; }
+    .btn-delete { background-color: transparent; color: #dc3545; border: 1px solid #dc3545; }
+    .btn-delete:hover { background-color: #dc3545; color: white; }
+    .ping-result {
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: auto;
+    }
+    .ping-success { color: #28a745; }
+    .ping-fail { color: #dc3545; }
+    .ping-loading { color: #f0ad4e; }
+    
+    .top-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      width: 100%;
+    }
+    
+    #toggleFormBtn, #themeToggleBtn {
+      height: 38px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--item-bg);
+      color: var(--text);
+      cursor: pointer;
+      box-shadow: var(--button-shadow);
+      transition: background-color 0.2s, box-shadow 0.2s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    
+    #toggleFormBtn {
+      flex-grow: 1;
+    }
+    
+    #themeToggleBtn {
+      width: 38px;
+      flex-shrink: 0;
+      font-size: 16px;
+    }
+
+    #toggleFormBtn:hover, #themeToggleBtn:hover {
+      background: var(--btn-hover);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+      transform: translateY(-1px);
+    }
+    
+    #toggleFormBtn:active, #themeToggleBtn:active {
+      transform: translateY(0);
+      box-shadow: var(--button-shadow);
+    }
+  </style>
+</head>
+<body>
+  <div class="top-bar">
+    <button id="toggleFormBtn">+ Add New Proxy</button>
+    <button id="themeToggleBtn" title="Toggle Theme">🌙</button>
+  </div>
+  <div id="addProxyFormContainer" style="display: none; margin-bottom: 15px;">
+    <h2>Add Proxy</h2>
+    <form id="add-proxy-form">
+      <input type="text" id="name" placeholder="Custom Name" required>
+      <input type="text" id="host" placeholder="IP/Host" required>
+      <input type="number" id="port" placeholder="Port" required>
+      <input type="text" id="username" placeholder="Username">
+      <input type="password" id="password" placeholder="Password">
+      <button type="submit">Add Proxy</button>
+    </form>
+  </div>
+
+  <h2>Saved Proxies</h2>
+  <div id="proxy-list" class="proxy-list"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
