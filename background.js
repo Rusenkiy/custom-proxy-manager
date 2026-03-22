@@ -21,21 +21,68 @@ chrome.runtime.onStartup.addListener(() => {
 });
 
 async function applyConfig(proxy) {
-  if (!proxy) {
+  const data = await chrome.storage.local.get(['adblockEnabled']);
+  const adblock = !!data.adblockEnabled;
+
+  if (!proxy && !adblock) {
     return new Promise((resolve) => {
       chrome.proxy.settings.clear({ scope: 'regular' }, resolve);
     });
   }
   
+  if (proxy && !adblock) {
+    const config = {
+      mode: "fixed_servers",
+      rules: {
+        singleProxy: {
+          scheme: proxy.type ? proxy.type.toLowerCase() : "http",
+          host: proxy.host,
+          port: parseInt(proxy.port, 10)
+        },
+        bypassList: ["localhost", "127.0.0.1"]
+      }
+    };
+    return new Promise((resolve) => {
+      chrome.proxy.settings.set({ value: config, scope: 'regular' }, resolve);
+    });
+  }
+
+  // PAC script for AdBlock
+  let fallback = "DIRECT";
+  if (proxy) {
+    let type = proxy.type ? proxy.type.toUpperCase() : "HTTP";
+    if (type === "HTTP") type = "PROXY"; // Chrome PAC syntax mapping
+    fallback = `${type} ${proxy.host}:${proxy.port}`;
+  }
+
+  const pacScript = `
+    const adDomains = [
+      "doubleclick.net",
+      "googleadservices.com",
+      "googlesyndication.com",
+      "adservice.google.com",
+      "scorecardresearch.com",
+      "taboola.com",
+      "outbrain.com",
+      "criteo.com",
+      "amazon-adsystem.com",
+      "adsafeprotected.com"
+    ];
+
+    function FindProxyForURL(url, host) {
+      for (let i = 0; i < adDomains.length; i++) {
+        if (dnsDomainIs(host, adDomains[i])) {
+          return "PROXY 0.0.0.0:80"; // block
+        }
+      }
+      return "${fallback}";
+    }
+  `;
+
   const config = {
-    mode: "fixed_servers",
-    rules: {
-      singleProxy: {
-        scheme: proxy.type ? proxy.type.toLowerCase() : "http",
-        host: proxy.host,
-        port: parseInt(proxy.port, 10)
-      },
-      bypassList: ["localhost", "127.0.0.1"]
+    mode: "pac_script",
+    pacScript: {
+      data: pacScript
     }
   };
 
@@ -79,8 +126,12 @@ chrome.webRequest.onAuthRequired.addListener(
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'setProxy') {
     applyConfig(request.proxy).then(() => {
-      chrome.action.setBadgeText({ text: "ON" });
-      chrome.action.setBadgeBackgroundColor({ color: "#4CAF50" });
+      if (request.proxy) {
+        chrome.action.setBadgeText({ text: "ON" });
+        chrome.action.setBadgeBackgroundColor({ color: "#4CAF50" });
+      } else {
+        chrome.action.setBadgeText({ text: "" });
+      }
       sendResponse({ success: true });
     });
     return true; 

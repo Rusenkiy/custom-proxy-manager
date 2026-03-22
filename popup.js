@@ -2,9 +2,27 @@ document.addEventListener('DOMContentLoaded', () => {
   const themeToggleBtn = document.getElementById('themeToggleBtn');
 
   // Theme initialization
-  chrome.storage.local.get(['theme'], (result) => {
+  chrome.storage.local.get(['theme', 'adblockEnabled'], (result) => {
     let savedTheme = result.theme;
     
+    // Set AdBlock toggle early
+    const adblockToggle = document.getElementById('adblockToggle');
+    if (adblockToggle) {
+      adblockToggle.checked = !!result.adblockEnabled;
+
+      adblockToggle.addEventListener('change', (e) => {
+        chrome.storage.local.set({ adblockEnabled: e.target.checked }, () => {
+          // Re-apply proxy settings based on new adblock state
+          chrome.storage.local.get(['activeProxyId', 'proxies'], (data) => {
+            const activeProxy = (data.proxies && data.activeProxyId) 
+              ? data.proxies.find(p => p.id === data.activeProxyId)
+              : null;
+            chrome.runtime.sendMessage({ action: 'setProxy', proxy: activeProxy });
+          });
+        });
+      });
+    }
+
     if (!savedTheme) {
       // Check system preference
       const isSystemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
