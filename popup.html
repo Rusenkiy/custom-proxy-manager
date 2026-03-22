@@ -239,7 +239,21 @@
       width: 100%;
     }
     
-    #toggleFormBtn, #themeToggleBtn {
+    textarea {
+      padding: 8px;
+      border: 1px solid var(--input-border);
+      border-radius: 4px;
+      font-size: 13px;
+      background-color: var(--input-bg);
+      color: var(--text);
+      resize: vertical;
+      font-family: monospace;
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 100px;
+    }
+
+    #toggleFormBtn, #bulkImportBtn, #themeToggleBtn {
       height: 38px;
       border-radius: 6px;
       border: 1px solid var(--border);
@@ -256,7 +270,7 @@
       font-weight: 500;
     }
     
-    #toggleFormBtn {
+    #toggleFormBtn, #bulkImportBtn {
       flex-grow: 1;
     }
     
@@ -266,13 +280,13 @@
       font-size: 16px;
     }
 
-    #toggleFormBtn:hover, #themeToggleBtn:hover {
+    #toggleFormBtn:hover, #bulkImportBtn:hover, #themeToggleBtn:hover {
       background: var(--btn-hover);
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
       transform: translateY(-1px);
     }
     
-    #toggleFormBtn:active, #themeToggleBtn:active {
+    #toggleFormBtn:active, #bulkImportBtn:active, #themeToggleBtn:active {
       transform: translateY(0);
       box-shadow: var(--button-shadow);
     }
@@ -320,6 +334,7 @@
   </div>
   <div class="top-bar">
     <button id="toggleFormBtn">+ Add New Proxy</button>
+    <button id="bulkImportBtn" title="Bulk Import Proxies">📥 Bulk Import</button>
     <button id="themeToggleBtn" title="Toggle Theme">🌙</button>
   </div>
   <div id="addProxyFormContainer" style="display: none; margin-bottom: 15px;">
@@ -336,6 +351,14 @@
       <input type="text" id="username" placeholder="Username">
       <input type="password" id="password" placeholder="Password">
       <button type="submit">Add Proxy</button>
+    </form>
+  </div>
+
+  <div id="bulkImportContainer" style="display: none; margin-bottom: 15px;">
+    <h2>Bulk Import Proxies</h2>
+    <form id="bulk-import-form">
+      <textarea id="bulk-proxies-input" placeholder="ip:port:user:pass (one per line)" required></textarea>
+      <button type="submit">Confirm Import</button>
     </form>
   </div>
 

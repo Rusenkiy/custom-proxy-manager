@@ -43,6 +43,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const proxyListEl = document.getElementById('proxy-list');
   const toggleBtn = document.getElementById('toggleFormBtn');
   const formContainer = document.getElementById('addProxyFormContainer');
+  const bulkImportBtn = document.getElementById('bulkImportBtn');
+  const bulkImportContainer = document.getElementById('bulkImportContainer');
+  const bulkImportForm = document.getElementById('bulk-import-form');
 
   const ipText = document.getElementById('ip-text');
   const refreshIpBtn = document.getElementById('refresh-ip-btn');
@@ -51,33 +54,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (ipText) ipText.textContent = 'My IP: Fetching...';
     
     try {
-      // Primary API
-      const res = await fetch('https://ipapi.co/json/');
-      const data = await res.json();
+      const response = await chrome.runtime.sendMessage({ action: 'fetchIP' });
       
-      if (data.error) throw new Error('API Error');
-      
-      if (data.ip) {
-        if (ipText) ipText.textContent = `My IP: ${data.ip} (${data.country_name || data.country || 'Unknown'})`;
-        return;
+      if (response && response.ip) {
+        if (ipText) {
+          ipText.textContent = `My IP: ${response.ip}${response.country_name ? ` (${response.country_name})` : ''}`;
+        }
+      } else {
+        if (ipText) ipText.textContent = 'My IP: Click to retry';
       }
     } catch (err) {
-      // Fallback API
-      try {
-        const fallbackRes = await fetch('https://api.ipify.org?format=json');
-        const fallbackData = await fallbackRes.json();
-        
-        if (fallbackData.ip) {
-          if (ipText) ipText.textContent = `My IP: ${fallbackData.ip}`;
-          return;
-        }
-      } catch (fallbackErr) {
-        console.error('IP Check failed:', fallbackErr);
-      }
+      console.error('IP Check failed:', err);
+      if (ipText) ipText.textContent = 'My IP: Click to retry';
     }
-    
-    // UI failure state
-    if (ipText) ipText.textContent = 'My IP: Click to retry';
   }
 
   if (refreshIpBtn) {
@@ -104,9 +93,23 @@ document.addEventListener('DOMContentLoaded', () => {
     if (formContainer.style.display === 'none') {
       formContainer.style.display = 'block';
       toggleBtn.textContent = 'Close';
+      bulkImportContainer.style.display = 'none';
+      bulkImportBtn.textContent = '📥 Bulk Import';
     } else {
       formContainer.style.display = 'none';
       toggleBtn.textContent = '+ Add New Proxy';
+    }
+  });
+
+  bulkImportBtn.addEventListener('click', () => {
+    if (bulkImportContainer.style.display === 'none') {
+      bulkImportContainer.style.display = 'block';
+      bulkImportBtn.textContent = 'Close';
+      formContainer.style.display = 'none';
+      toggleBtn.textContent = '+ Add New Proxy';
+    } else {
+      bulkImportContainer.style.display = 'none';
+      bulkImportBtn.textContent = '📥 Bulk Import';
     }
   });
 
@@ -142,6 +145,47 @@ document.addEventListener('DOMContentLoaded', () => {
     // Hide form after successful addition
     formContainer.style.display = 'none';
     toggleBtn.textContent = '+ Add New Proxy';
+  });
+
+  bulkImportForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const inputEl = document.getElementById('bulk-proxies-input');
+    const lines = inputEl.value.trim().split('\n');
+    let addedCount = 0;
+    
+    lines.forEach((line, index) => {
+      const parts = line.trim().split(':');
+      if (parts.length >= 2) {
+        const host = parts[0].trim();
+        const port = parseInt(parts[1].trim(), 10);
+        if (!host || isNaN(port)) return; // Skip invalid
+        
+        const username = parts[2] ? parts[2].trim() : '';
+        const password = parts[3] ? parts[3].trim() : '';
+        
+        const proxyCount = proxies.length + 1;
+        const newProxy = {
+          id: (Date.now() + index).toString(),
+          type: 'HTTP', // Default type for bulk
+          name: `Proxy ${proxyCount}`,
+          host,
+          port,
+          username,
+          password
+        };
+        proxies.push(newProxy);
+        addedCount++;
+      }
+    });
+    
+    if (addedCount > 0) {
+      saveProxies();
+      renderProxies();
+    }
+    
+    inputEl.value = '';
+    bulkImportContainer.style.display = 'none';
+    bulkImportBtn.textContent = '📥 Bulk Import';
   });
 
   function saveProxies() {

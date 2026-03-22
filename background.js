@@ -94,6 +94,39 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
+  if (request.action === 'fetchIP') {
+    async function executeFetchIP() {
+      try {
+        const res = await fetch('https://ipapi.co/json/');
+        const data = await res.json();
+        
+        if (!data.error && data.ip) {
+          sendResponse({ ip: data.ip, country_name: data.country_name || data.country });
+          return;
+        }
+      } catch (err) {
+        console.warn('Primary IP fetch failed, trying fallback:', err);
+      }
+      
+      try {
+        const fbRes = await fetch('https://api.ipify.org?format=json');
+        const fbData = await fbRes.json();
+        
+        if (fbData && fbData.ip) {
+          sendResponse({ ip: fbData.ip });
+          return;
+        }
+      } catch (fbErr) {
+        console.error('Fallback IP fetch failed:', fbErr);
+      }
+      
+      sendResponse({ error: 'Failed to fetch IP' });
+    }
+    
+    executeFetchIP();
+    return true;
+  }
+
   if (request.action === 'pingProxy') {
     async function executePingTest() {
       const proxy = request.proxy;
