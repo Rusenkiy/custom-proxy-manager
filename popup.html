@@ -276,9 +276,48 @@
       transform: translateY(0);
       box-shadow: var(--button-shadow);
     }
+
+    #ip-status-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      font-size: 13px;
+      color: var(--text-muted);
+      background: var(--item-bg);
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
+    #ip-text {
+      font-weight: 500;
+    }
+
+    #refresh-ip-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 16px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s, transform 0.2s;
+    }
+
+    #refresh-ip-btn:hover {
+      color: var(--text);
+      transform: rotate(45deg);
+    }
   </style>
 </head>
 <body>
+  <div id="ip-status-container">
+    <span id="ip-text">My IP: Fetching...</span>
+    <button id="refresh-ip-btn" title="Refresh IP">↺</button>
+  </div>
   <div class="top-bar">
     <button id="toggleFormBtn">+ Add New Proxy</button>
     <button id="themeToggleBtn" title="Toggle Theme">🌙</button>

@@ -44,6 +44,49 @@ document.addEventListener('DOMContentLoaded', () => {
   const toggleBtn = document.getElementById('toggleFormBtn');
   const formContainer = document.getElementById('addProxyFormContainer');
 
+  const ipText = document.getElementById('ip-text');
+  const refreshIpBtn = document.getElementById('refresh-ip-btn');
+
+  async function fetchCurrentIP() {
+    if (ipText) ipText.textContent = 'My IP: Fetching...';
+    
+    try {
+      // Primary API
+      const res = await fetch('https://ipapi.co/json/');
+      const data = await res.json();
+      
+      if (data.error) throw new Error('API Error');
+      
+      if (data.ip) {
+        if (ipText) ipText.textContent = `My IP: ${data.ip} (${data.country_name || data.country || 'Unknown'})`;
+        return;
+      }
+    } catch (err) {
+      // Fallback API
+      try {
+        const fallbackRes = await fetch('https://api.ipify.org?format=json');
+        const fallbackData = await fallbackRes.json();
+        
+        if (fallbackData.ip) {
+          if (ipText) ipText.textContent = `My IP: ${fallbackData.ip}`;
+          return;
+        }
+      } catch (fallbackErr) {
+        console.error('IP Check failed:', fallbackErr);
+      }
+    }
+    
+    // UI failure state
+    if (ipText) ipText.textContent = 'My IP: Click to retry';
+  }
+
+  if (refreshIpBtn) {
+    refreshIpBtn.addEventListener('click', fetchCurrentIP);
+  }
+
+  // Initial fetch on load
+  fetchCurrentIP();
+
   let proxies = [];
   let activeProxyId = null;
   let selectedProxyType = 'HTTP';
@@ -116,6 +159,9 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       chrome.runtime.sendMessage({ action: 'clearProxy' });
     }
+
+    // Give proxy a bit of time to apply before testing the connection and fetching the new IP
+    setTimeout(fetchCurrentIP, 1000);
   }
 
   function renderProxies() {
