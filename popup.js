@@ -168,7 +168,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Load proxies and active state
   chrome.storage.local.get(['proxies', 'activeProxyId'], (result) => {
-    if (result.proxies) proxies = result.proxies;
+    if (result.proxies) {
+      proxies = result.proxies.map(p => ({
+        ...p,
+        isPinned: p.isPinned === undefined ? true : p.isPinned
+      }));
+      chrome.storage.local.set({ proxies });
+    }
     if (result.activeProxyId) activeProxyId = result.activeProxyId;
     renderProxies();
   });
@@ -183,6 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
       port: parseInt(document.getElementById('port').value, 10),
       username: document.getElementById('username').value,
       password: document.getElementById('password').value,
+      isPinned: true,
     };
 
     proxies.push(newProxy);
@@ -224,7 +231,8 @@ document.addEventListener('DOMContentLoaded', () => {
           host,
           port,
           username,
-          password
+          password,
+          isPinned: false
         };
         proxies.push(newProxy);
         addedCount++;
@@ -268,12 +276,14 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderProxies() {
     proxyListEl.innerHTML = '';
 
-    if (proxies.length === 0) {
-      proxyListEl.innerHTML = '<div style="font-size: 13px; color: #666;">No proxies saved.</div>';
+    const pinnedProxies = proxies.filter(p => p.isPinned);
+
+    if (pinnedProxies.length === 0) {
+      proxyListEl.innerHTML = '<div style="font-size: 13px; color: #666;">No pinned proxies. Add one or import to the pool.</div>';
       return;
     }
 
-    proxies.forEach(proxy => {
+    pinnedProxies.forEach(proxy => {
       const isActive = proxy.id === activeProxyId;
       const el = document.createElement('div');
       el.className = `proxy-item ${isActive ? 'active' : ''}`;
@@ -282,7 +292,31 @@ document.addEventListener('DOMContentLoaded', () => {
       const badgeEl = document.createElement('div');
       badgeEl.className = 'proxy-type-badge';
       badgeEl.textContent = pType;
+      
+      const unpinBtn = document.createElement('button');
+      unpinBtn.className = 'btn-icon';
+      unpinBtn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24M1 1l22 22"></path>
+        </svg>
+      `;
+      unpinBtn.style.position = 'absolute';
+      unpinBtn.style.top = '4px';
+      unpinBtn.style.right = '40px';
+      unpinBtn.title = 'Unpin Proxy';
+      unpinBtn.onclick = () => {
+        if (isActive) setActiveProxy(null);
+        proxy.isPinned = false;
+        saveProxies();
+        
+        el.style.height = el.offsetHeight + 'px';
+        el.classList.add('removing');
+        requestAnimationFrame(() => el.classList.add('removing-active'));
+        setTimeout(renderProxies, 300);
+      };
+      
       el.appendChild(badgeEl);
+      el.appendChild(unpinBtn);
 
       const header = document.createElement('div');
       header.className = 'proxy-header';
