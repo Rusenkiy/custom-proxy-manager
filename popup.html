@@ -258,7 +258,7 @@
       min-height: 100px;
     }
 
-    #toggleFormBtn, #bulkImportBtn, #themeToggleBtn {
+    #toggleFormBtn, #settingsBtn, #themeToggleBtn {
       height: 38px;
       border-radius: 6px;
       border: 1px solid var(--border);
@@ -275,23 +275,23 @@
       font-weight: 500;
     }
     
-    #toggleFormBtn, #bulkImportBtn {
+    #toggleFormBtn {
       flex-grow: 1;
     }
     
-    #themeToggleBtn {
+    #settingsBtn, #themeToggleBtn {
       width: 38px;
       flex-shrink: 0;
       font-size: 16px;
     }
 
-    #toggleFormBtn:hover, #bulkImportBtn:hover, #themeToggleBtn:hover {
+    #toggleFormBtn:hover, #settingsBtn:hover, #themeToggleBtn:hover {
       background: var(--btn-hover);
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
       transform: translateY(-1px);
     }
     
-    #toggleFormBtn:active, #bulkImportBtn:active, #themeToggleBtn:active {
+    #toggleFormBtn:active, #settingsBtn:active, #themeToggleBtn:active {
       transform: translateY(0);
       box-shadow: var(--button-shadow);
     }
@@ -405,26 +405,122 @@
       font-size: 13px;
       z-index: 10;
     }
+
+    #overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 99;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.15s ease-out;
+    }
+    #overlay.show {
+      opacity: 1;
+    }
+    
+    .bottom-sheet {
+      position: fixed;
+      left: 12px; right: 12px; bottom: 12px;
+      width: calc(100% - 24px);
+      background: var(--bg);
+      z-index: 100;
+      border-radius: 12px;
+      box-shadow: 0 15px 40px rgba(0,0,0,0.8);
+      transition: transform 0.15s ease-out;
+      border: 1px solid var(--border);
+      padding: 20px;
+      min-height: 300px;
+      box-sizing: border-box;
+      transform: translateY(150%);
+    }
+    
+    .bottom-sheet.show {
+      transform: translateY(0);
+    }
+    
+    .bottom-sheet h2 {
+      margin-top: 0;
+      margin-bottom: 12px;
+    }
+    
+    .menu-item {
+      padding: 12px;
+      background: var(--item-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: background-color 0.2s;
+    }
+    
+    .menu-item:hover {
+      background: var(--btn-hover);
+    }
+    
+    .modal {
+      position: fixed;
+      top: 10px; left: 10px; right: 10px; bottom: 10px;
+      background: var(--bg);
+      z-index: 101;
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      border: 1px solid var(--border);
+      padding: 16px;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.15s ease-out;
+      flex-direction: column;
+      box-sizing: border-box;
+    }
+    
+    .modal.show {
+      opacity: 1;
+    }
+    
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    
+    .modal-header h2 {
+      margin: 0;
+    }
+    
+    .btn-close {
+      background: transparent !important;
+      border: none;
+      color: #888;
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 4px;
+      outline: none;
+      box-shadow: none !important;
+    }
   </style>
 </head>
 <body>
   <div id="fixed-header">
     <div id="ip-status-container">
-      <span id="ip-text">My IP: Fetching...</span>
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <div style="display: flex; align-items: center; gap: 4px;" title="AdGuard DNS">
-          <span style="font-size: 11px; text-transform: uppercase; font-weight: 600; color: var(--text-muted);">AdGuard DNS</span>
-          <label class="switch">
-            <input type="checkbox" id="adblockToggle">
-            <span class="slider"></span>
-          </label>
-        </div>
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <span id="ip-text">My IP: Fetching...</span>
         <button id="refresh-ip-btn" title="Refresh IP">↺</button>
+      </div>
+      <div style="display: flex; align-items: center; gap: 4px;" title="AdGuard DNS">
+        <span style="font-size: 11px; text-transform: uppercase; font-weight: 600; color: var(--text-muted);">AdGuard DNS</span>
+        <label class="switch">
+          <input type="checkbox" id="adblockToggle">
+          <span class="slider"></span>
+        </label>
       </div>
     </div>
     <div class="top-bar">
-      <button id="toggleFormBtn">+ Add New Proxy</button>
-      <button id="bulkImportBtn" title="Bulk Import Proxies">📥 Bulk Import</button>
+      <button id="settingsBtn" title="Settings">⚙️</button>
+      <button id="toggleFormBtn">Add New Proxy</button>
       <button id="themeToggleBtn" title="Toggle Theme">🌙</button>
     </div>
     <div id="addProxyFormContainer" style="display: none; margin-bottom: 15px;">
@@ -444,14 +540,6 @@
       </form>
     </div>
 
-    <div id="bulkImportContainer" style="display: none; margin-bottom: 15px;">
-      <h2>Bulk Import Proxies</h2>
-      <form id="bulk-import-form">
-        <textarea id="bulk-proxies-input" placeholder="ip:port:user:pass (one per line)" required></textarea>
-        <button type="submit">Confirm Import</button>
-      </form>
-    </div>
-
     <h2>Saved Proxies</h2>
   </div>
 
@@ -460,6 +548,24 @@
   <div id="fixed-footer">
     <span style="margin-right: 6px; font-size: 14px;">🌐</span>
     <span id="current-domain">Fetching site...</span>
+  </div>
+
+  <div id="overlay"></div>
+
+  <div id="settings-menu" class="bottom-sheet">
+    <h2>Settings</h2>
+    <div class="menu-item" id="openBulkImportBtn">Bulk Import</div>
+  </div>
+
+  <div id="bulk-import-modal" class="modal">
+    <div class="modal-header">
+      <h2>Bulk Import Proxies</h2>
+      <button id="closeBulkImportModalBtn" class="btn-close">✖</button>
+    </div>
+    <form id="bulk-import-form" style="flex-grow: 1; display: flex; flex-direction: column;">
+      <textarea id="bulk-proxies-input" placeholder="ip:port:user:pass (one per line)" required style="flex-grow: 1; margin-bottom: 10px;"></textarea>
+      <button type="submit">Confirm Import</button>
+    </form>
   </div>
 
   <script src="popup.js"></script>

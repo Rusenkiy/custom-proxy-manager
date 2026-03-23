@@ -61,8 +61,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const proxyListEl = document.getElementById('proxy-list');
   const toggleBtn = document.getElementById('toggleFormBtn');
   const formContainer = document.getElementById('addProxyFormContainer');
-  const bulkImportBtn = document.getElementById('bulkImportBtn');
-  const bulkImportContainer = document.getElementById('bulkImportContainer');
+  const settingsBtn = document.getElementById('settingsBtn');
+  const overlay = document.getElementById('overlay');
+  const settingsMenu = document.getElementById('settings-menu');
+  const openBulkImportBtn = document.getElementById('openBulkImportBtn');
+  const bulkImportModal = document.getElementById('bulk-import-modal');
+  const closeBulkImportModalBtn = document.getElementById('closeBulkImportModalBtn');
   const bulkImportForm = document.getElementById('bulk-import-form');
 
   const ipText = document.getElementById('ip-text');
@@ -111,24 +115,45 @@ document.addEventListener('DOMContentLoaded', () => {
     if (formContainer.style.display === 'none') {
       formContainer.style.display = 'block';
       toggleBtn.textContent = 'Close';
-      bulkImportContainer.style.display = 'none';
-      bulkImportBtn.textContent = '📥 Bulk Import';
     } else {
       formContainer.style.display = 'none';
-      toggleBtn.textContent = '+ Add New Proxy';
+      toggleBtn.textContent = 'Add New Proxy';
     }
   });
 
-  bulkImportBtn.addEventListener('click', () => {
-    if (bulkImportContainer.style.display === 'none') {
-      bulkImportContainer.style.display = 'block';
-      bulkImportBtn.textContent = 'Close';
-      formContainer.style.display = 'none';
-      toggleBtn.textContent = '+ Add New Proxy';
-    } else {
-      bulkImportContainer.style.display = 'none';
-      bulkImportBtn.textContent = '📥 Bulk Import';
-    }
+  settingsBtn.addEventListener('click', () => {
+    overlay.style.display = 'block';
+    setTimeout(() => {
+      overlay.classList.add('show');
+      settingsMenu.classList.add('show');
+    }, 10);
+  });
+
+  overlay.addEventListener('click', () => {
+    settingsMenu.classList.remove('show');
+    bulkImportModal.classList.remove('show');
+    overlay.classList.remove('show');
+    setTimeout(() => {
+      bulkImportModal.style.display = 'none';
+      overlay.style.display = 'none';
+    }, 150);
+  });
+
+  openBulkImportBtn.addEventListener('click', () => {
+    settingsMenu.classList.remove('show');
+    bulkImportModal.style.display = 'flex';
+    setTimeout(() => {
+      bulkImportModal.classList.add('show');
+    }, 10);
+  });
+
+  closeBulkImportModalBtn.addEventListener('click', () => {
+    bulkImportModal.classList.remove('show');
+    overlay.classList.remove('show');
+    setTimeout(() => {
+      bulkImportModal.style.display = 'none';
+      overlay.style.display = 'none';
+    }, 150);
   });
 
   // Load proxies and active state
@@ -162,7 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Hide form after successful addition
     formContainer.style.display = 'none';
-    toggleBtn.textContent = '+ Add New Proxy';
+    toggleBtn.textContent = 'Add New Proxy';
   });
 
   bulkImportForm.addEventListener('submit', (e) => {
@@ -202,8 +227,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     inputEl.value = '';
-    bulkImportContainer.style.display = 'none';
-    bulkImportBtn.textContent = '📥 Bulk Import';
+    bulkImportModal.classList.remove('show');
+    overlay.classList.remove('show');
+    setTimeout(() => {
+      bulkImportModal.style.display = 'none';
+      overlay.style.display = 'none';
+    }, 150);
   });
 
   function saveProxies() {
