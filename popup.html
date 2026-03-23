@@ -117,6 +117,21 @@
       gap: 8px;
       transition: border-color 0.2s, box-shadow 0.2s, background-color 0.3s;
     }
+    .proxy-item.removing {
+      transition: all 0.3s ease-in-out;
+      overflow: hidden;
+    }
+    .proxy-item.removing-active {
+      opacity: 0;
+      transform: scale(0.9);
+      height: 0 !important;
+      min-height: 0 !important;
+      margin-top: 0 !important; 
+      margin-bottom: 0 !important;
+      padding-top: 0 !important; 
+      padding-bottom: 0 !important;
+      border-width: 0 !important;
+    }
     .proxy-type-badge {
       position: absolute;
       top: 6px;
@@ -187,8 +202,13 @@
     .btn-disconnect:hover { background-color: #c82333; }
     .btn-ping { background-color: #6c757d; }
     .btn-ping:hover { background-color: #5a6268; }
-    .btn-delete { background-color: transparent; color: #dc3545; border: 1px solid #dc3545; }
+    .btn-delete { background-color: transparent; color: #dc3545; border: 1px solid #dc3545; transition: all 0.2s ease; }
     .btn-delete:hover { background-color: #dc3545; color: white; }
+    .btn-delete.delete-confirm { 
+      background-color: #dc3545; 
+      color: white; 
+      font-weight: bold;
+    }
     .ping-result {
       font-size: 12px;
       font-weight: 600;

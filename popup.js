@@ -1,6 +1,16 @@
 document.addEventListener('DOMContentLoaded', () => {
   const themeToggleBtn = document.getElementById('themeToggleBtn');
 
+  // Reset confirming delete buttons when clicking elsewhere
+  document.addEventListener('click', (e) => {
+    if (!e.target.classList.contains('btn-delete')) {
+      document.querySelectorAll('.delete-confirm').forEach(btn => {
+        btn.classList.remove('delete-confirm');
+        btn.textContent = 'Delete';
+      });
+    }
+  });
+
   // Theme initialization
   chrome.storage.local.get(['theme', 'adblockEnabled'], (result) => {
     let savedTheme = result.theme;
@@ -387,13 +397,42 @@ document.addEventListener('DOMContentLoaded', () => {
       const deleteBtn = document.createElement('button');
       deleteBtn.textContent = 'Delete';
       deleteBtn.className = 'btn-delete';
+      let confirmTimeout;
+      
       deleteBtn.onclick = () => {
-        if (isActive) {
-          setActiveProxy(null);
+        if (deleteBtn.classList.contains('delete-confirm')) {
+          if (isActive) setActiveProxy(null);
+          proxies = proxies.filter(p => p.id !== proxy.id);
+          saveProxies();
+          
+          el.style.height = el.offsetHeight + 'px'; // Fix initial height for transition
+          el.classList.add('removing');
+          
+          requestAnimationFrame(() => {
+            el.classList.add('removing-active');
+          });
+          
+          setTimeout(() => {
+            renderProxies();
+          }, 300);
+        } else {
+          // Reset others
+          document.querySelectorAll('.delete-confirm').forEach(b => {
+            b.classList.remove('delete-confirm');
+            b.textContent = 'Delete';
+          });
+          
+          deleteBtn.classList.add('delete-confirm');
+          deleteBtn.textContent = 'Confirm?';
+          
+          if (confirmTimeout) clearTimeout(confirmTimeout);
+          confirmTimeout = setTimeout(() => {
+            if (deleteBtn.classList.contains('delete-confirm')) {
+              deleteBtn.classList.remove('delete-confirm');
+              deleteBtn.textContent = 'Delete';
+            }
+          }, 3000); // 3 seconds timeout
         }
-        proxies = proxies.filter(p => p.id !== proxy.id);
-        saveProxies();
-        renderProxies();
       };
       actions.appendChild(deleteBtn);
 
