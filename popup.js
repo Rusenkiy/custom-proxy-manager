@@ -372,4 +372,19 @@ document.addEventListener('DOMContentLoaded', () => {
       proxyListEl.appendChild(el);
     });
   }
+
+  // Get current tab domain
+  if (chrome.tabs && chrome.tabs.query) {
+    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+      if (tabs[0] && tabs[0].url) {
+        try {
+          let url = new URL(tabs[0].url);
+          const domainEl = document.getElementById('current-domain');
+          if (domainEl) {
+            domainEl.textContent = url.hostname;
+          }
+        } catch(e) {}
+      }
+    });
+  }
 });

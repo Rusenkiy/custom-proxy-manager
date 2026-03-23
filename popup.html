@@ -52,12 +52,17 @@
     }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      width: 320px;
+      width: 400px;
       margin: 0;
       padding: 16px;
       background-color: var(--bg);
       color: var(--text);
       transition: background-color 0.3s, color 0.3s;
+      height: 520px;
+      box-sizing: border-box;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
     }
     h2 {
       margin-top: 0;
@@ -295,6 +300,8 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 10px;
+      white-space: nowrap;
       margin-bottom: 12px;
       font-size: 13px;
       color: var(--text-muted);
@@ -362,54 +369,98 @@
     input:checked + .slider:before {
       transform: translateX(12px);
     }
+    
+    #fixed-header {
+      flex-shrink: 0;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      background: inherit;
+      z-index: 10;
+    }
+    .scrollable-area {
+      flex-grow: 1;
+      overflow-y: auto;
+      max-height: 340px;
+      margin-top: 10px;
+    }
+    .scrollable-area::-webkit-scrollbar {
+      width: 6px;
+    }
+    .scrollable-area::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .scrollable-area::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+    }
+    #fixed-footer {
+      flex-shrink: 0;
+      margin: auto -16px -16px -16px;
+      padding: 10px 15px;
+      border-top: 1px solid var(--border);
+      background: inherit;
+      display: flex;
+      align-items: center;
+      color: var(--text-muted);
+      font-size: 13px;
+      z-index: 10;
+    }
   </style>
 </head>
 <body>
-  <div id="ip-status-container">
-    <span id="ip-text">My IP: Fetching...</span>
-    <div style="display: flex; align-items: center; gap: 8px;">
-      <div style="display: flex; align-items: center; gap: 4px;" title="AdGuard DNS">
-        <span style="font-size: 11px; text-transform: uppercase; font-weight: 600; color: var(--text-muted);">AdGuard DNS</span>
-        <label class="switch">
-          <input type="checkbox" id="adblockToggle">
-          <span class="slider"></span>
-        </label>
+  <div id="fixed-header">
+    <div id="ip-status-container">
+      <span id="ip-text">My IP: Fetching...</span>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 4px;" title="AdGuard DNS">
+          <span style="font-size: 11px; text-transform: uppercase; font-weight: 600; color: var(--text-muted);">AdGuard DNS</span>
+          <label class="switch">
+            <input type="checkbox" id="adblockToggle">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <button id="refresh-ip-btn" title="Refresh IP">↺</button>
       </div>
-      <button id="refresh-ip-btn" title="Refresh IP">↺</button>
     </div>
-  </div>
-  <div class="top-bar">
-    <button id="toggleFormBtn">+ Add New Proxy</button>
-    <button id="bulkImportBtn" title="Bulk Import Proxies">📥 Bulk Import</button>
-    <button id="themeToggleBtn" title="Toggle Theme">🌙</button>
-  </div>
-  <div id="addProxyFormContainer" style="display: none; margin-bottom: 15px;">
-    <h2>Add Proxy</h2>
-    <form id="add-proxy-form">
-      <div class="segmented-control" id="proxy-type-selector">
-        <button type="button" class="segment-btn active" data-type="HTTP">HTTP</button>
-        <button type="button" class="segment-btn" data-type="HTTPS">HTTPS</button>
-        <button type="button" class="segment-btn" data-type="SOCKS5">SOCKS5</button>
-      </div>
-      <input type="text" id="name" placeholder="Custom Name" required>
-      <input type="text" id="host" placeholder="IP/Host" required>
-      <input type="number" id="port" placeholder="Port" required>
-      <input type="text" id="username" placeholder="Username">
-      <input type="password" id="password" placeholder="Password">
-      <button type="submit">Add Proxy</button>
-    </form>
+    <div class="top-bar">
+      <button id="toggleFormBtn">+ Add New Proxy</button>
+      <button id="bulkImportBtn" title="Bulk Import Proxies">📥 Bulk Import</button>
+      <button id="themeToggleBtn" title="Toggle Theme">🌙</button>
+    </div>
+    <div id="addProxyFormContainer" style="display: none; margin-bottom: 15px;">
+      <h2>Add Proxy</h2>
+      <form id="add-proxy-form">
+        <div class="segmented-control" id="proxy-type-selector">
+          <button type="button" class="segment-btn active" data-type="HTTP">HTTP</button>
+          <button type="button" class="segment-btn" data-type="HTTPS">HTTPS</button>
+          <button type="button" class="segment-btn" data-type="SOCKS5">SOCKS5</button>
+        </div>
+        <input type="text" id="name" placeholder="Custom Name" required>
+        <input type="text" id="host" placeholder="IP/Host" required>
+        <input type="number" id="port" placeholder="Port" required>
+        <input type="text" id="username" placeholder="Username">
+        <input type="password" id="password" placeholder="Password">
+        <button type="submit">Add Proxy</button>
+      </form>
+    </div>
+
+    <div id="bulkImportContainer" style="display: none; margin-bottom: 15px;">
+      <h2>Bulk Import Proxies</h2>
+      <form id="bulk-import-form">
+        <textarea id="bulk-proxies-input" placeholder="ip:port:user:pass (one per line)" required></textarea>
+        <button type="submit">Confirm Import</button>
+      </form>
+    </div>
+
+    <h2>Saved Proxies</h2>
   </div>
 
-  <div id="bulkImportContainer" style="display: none; margin-bottom: 15px;">
-    <h2>Bulk Import Proxies</h2>
-    <form id="bulk-import-form">
-      <textarea id="bulk-proxies-input" placeholder="ip:port:user:pass (one per line)" required></textarea>
-      <button type="submit">Confirm Import</button>
-    </form>
-  </div>
+  <div id="proxy-list" class="proxy-list scrollable-area"></div>
 
-  <h2>Saved Proxies</h2>
-  <div id="proxy-list" class="proxy-list"></div>
+  <div id="fixed-footer">
+    <span style="margin-right: 6px; font-size: 14px;">🌐</span>
+    <span id="current-domain">Fetching site...</span>
+  </div>
 
   <script src="popup.js"></script>
 </body>

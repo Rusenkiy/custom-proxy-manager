@@ -7,7 +7,8 @@
     "proxy",
     "storage",
     "webRequest",
-    "webRequestAuthProvider"
+    "webRequestAuthProvider",
+    "tabs"
   ],
   "host_permissions": [
     "<all_urls>",
