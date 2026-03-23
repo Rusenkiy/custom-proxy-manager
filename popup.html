@@ -521,9 +521,99 @@
       outline: none;
       box-shadow: none !important;
     }
+    
+    .pool-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 8px;
+      margin-bottom: 4px;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    .pool-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      overflow: hidden;
+    }
+    .pool-status {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+      background: #ccc;
+    }
+    .pool-status.online { background: #28a745; }
+    .pool-name {
+      font-weight: 500;
+      white-space: nowrap; text-overflow: ellipsis; overflow: hidden;
+      max-width: 140px;
+    }
+    .pool-address {
+      color: var(--text-muted); font-size: 11px;
+    }
+    .pool-actions {
+      display: flex; gap: 4px; flex-shrink: 0;
+    }
+    .pool-actions button {
+      padding: 4px 6px; font-size: 12px;
+    }
+    #pool-search {
+      width: 100%;
+      box-sizing: border-box;
+      margin-bottom: 10px;
+      padding: 8px 12px;
+    }
+    #pool-list {
+      flex-grow: 1;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    #pool-list::-webkit-scrollbar { width: 4px; }
+    #pool-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    #toast-container {
+      position: fixed;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: calc(100% - 24px);
+      pointer-events: none;
+    }
+    .toast {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-size: 13px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+      opacity: 0;
+      transform: translateY(-10px);
+      transition: all 0.2s ease-out;
+      text-align: center;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .toast.error {
+      border-left: 3px solid #dc3545;
+    }
+    .toast.success {
+      border-left: 3px solid #007bff;
+    }
+    .toast.info {
+      border-left: 3px solid #007bff;
+    }
   </style>
 </head>
 <body>
+  <div id="toast-container"></div>
   <div id="fixed-header">
     <div id="ip-status-container">
       <div style="display: flex; align-items: center; gap: 6px;">
@@ -573,8 +663,21 @@
   <div id="overlay"></div>
 
   <div id="settings-menu" class="bottom-sheet">
-    <h2>Settings</h2>
-    <div class="menu-item" id="openBulkImportBtn">Bulk Import</div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+      <h2 style="margin: 0;">Settings</h2>
+    </div>
+    
+    <div class="menu-item" id="openBulkImportBtn" style="margin-bottom: 12px;">📥 Bulk Import</div>
+    <div class="menu-item" id="openPoolModalBtn" style="margin-bottom: 8px;">🗃️ Manage Proxy Pool</div>
+  </div>
+
+  <div id="pool-modal" class="modal">
+    <div class="modal-header">
+      <h2>Proxy Pool</h2>
+      <button id="closePoolModalBtn" class="btn-close">✖</button>
+    </div>
+    <input type="text" id="pool-search" placeholder="Search by name or IP..." style="flex-shrink: 0; margin-bottom: 10px;">
+    <div id="pool-list"></div>
   </div>
 
   <div id="bulk-import-modal" class="modal">

@@ -78,6 +78,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const bulkImportModal = document.getElementById('bulk-import-modal');
   const closeBulkImportModalBtn = document.getElementById('closeBulkImportModalBtn');
   const bulkImportForm = document.getElementById('bulk-import-form');
+  
+  const openPoolModalBtn = document.getElementById('openPoolModalBtn');
+  const poolModal = document.getElementById('pool-modal');
+  const closePoolModalBtn = document.getElementById('closePoolModalBtn');
+  const poolSearch = document.getElementById('pool-search');
+  const poolListEl = document.getElementById('pool-list');
 
   const ipText = document.getElementById('ip-text');
   const refreshIpBtn = document.getElementById('refresh-ip-btn');
@@ -139,12 +145,44 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 10);
   });
 
+  if (poolSearch) {
+    poolSearch.addEventListener('input', renderPool);
+  }
+  
+  if (openPoolModalBtn) {
+    openPoolModalBtn.addEventListener('click', () => {
+      if (typeof renderPool === 'function') renderPool();
+      settingsMenu.classList.remove('show');
+      poolModal.style.display = 'flex';
+      setTimeout(() => {
+        poolModal.classList.add('show');
+      }, 10);
+    });
+  }
+
+  if (closePoolModalBtn) {
+    closePoolModalBtn.addEventListener('click', () => {
+      poolModal.classList.remove('show');
+      overlay.classList.remove('show');
+      setTimeout(() => {
+        poolModal.style.display = 'none';
+        overlay.style.display = 'none';
+      }, 150);
+    });
+  }
+
+  if (poolSearch) {
+    poolSearch.addEventListener('input', renderPool);
+  }
+
   overlay.addEventListener('click', () => {
     settingsMenu.classList.remove('show');
     bulkImportModal.classList.remove('show');
+    if (poolModal) poolModal.classList.remove('show');
     overlay.classList.remove('show');
     setTimeout(() => {
       bulkImportModal.style.display = 'none';
+      if (poolModal) poolModal.style.display = 'none';
       overlay.style.display = 'none';
     }, 150);
   });
@@ -179,14 +217,49 @@ document.addEventListener('DOMContentLoaded', () => {
     renderProxies();
   });
 
-    form.addEventListener('submit', (e) => {
+  function showToast(message, type = 'info') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('show'));
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => toast.remove(), 200);
+    }, 3000);
+  }
+
+  function isValidProxy(ip, port) {
+    const portNum = parseInt(port, 10);
+    if (isNaN(portNum) || portNum < 1 || portNum > 65535) return false;
+    const parts = ip.split('.');
+    if (parts.length !== 4) return false;
+    for (let p of parts) {
+      if (!/^\d+$/.test(p)) return false;
+      const num = parseInt(p, 10);
+      if (num < 0 || num > 255) return false;
+    }
+    return true;
+  }
+
+  form.addEventListener('submit', (e) => {
     e.preventDefault();
+    const host = document.getElementById('host').value.trim();
+    const portString = document.getElementById('port').value.trim();
+    
+    if (!isValidProxy(host, portString)) {
+      showToast('Invalid IP or Port format.', 'error');
+      return;
+    }
+
     const newProxy = {
       id: Date.now().toString(),
       type: selectedProxyType,
       name: document.getElementById('name').value,
-      host: document.getElementById('host').value,
-      port: parseInt(document.getElementById('port').value, 10),
+      host: host,
+      port: parseInt(portString, 10),
       username: document.getElementById('username').value,
       password: document.getElementById('password').value,
       isPinned: true,
@@ -197,14 +270,13 @@ document.addEventListener('DOMContentLoaded', () => {
     renderProxies();
     form.reset();
 
-    // Reset proxy type to default HTTP
     proxyTypeBtns.forEach(b => b.classList.remove('active'));
     document.querySelector('.segment-btn[data-type="HTTP"]').classList.add('active');
     selectedProxyType = 'HTTP';
 
-    // Hide form after successful addition
     formContainer.style.display = 'none';
     toggleBtn.textContent = 'Add New Proxy';
+    showToast('Proxy added successfully!', 'success');
   });
 
   bulkImportForm.addEventListener('submit', (e) => {
@@ -212,14 +284,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const inputEl = document.getElementById('bulk-proxies-input');
     const lines = inputEl.value.trim().split('\n');
     let addedCount = 0;
+    let skippedCount = 0;
     
     lines.forEach((line, index) => {
+      if (!line.trim()) return;
       const parts = line.trim().split(':');
       if (parts.length >= 2) {
         const host = parts[0].trim();
-        const port = parseInt(parts[1].trim(), 10);
-        if (!host || isNaN(port)) return; // Skip invalid
+        const portString = parts[1].trim();
         
+        if (!isValidProxy(host, portString)) {
+          skippedCount++;
+          return;
+        }
+        
+        const port = parseInt(portString, 10);
         const username = parts[2] ? parts[2].trim() : '';
         const password = parts[3] ? parts[3].trim() : '';
         
@@ -242,6 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (addedCount > 0) {
       saveProxies();
       renderProxies();
+      if (typeof renderPool === 'function') renderPool();
     }
     
     inputEl.value = '';
@@ -250,6 +330,10 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
       bulkImportModal.style.display = 'none';
       overlay.style.display = 'none';
+      
+      if (addedCount > 0 || skippedCount > 0) {
+        showToast(`Imported ${addedCount} proxies. Skipped ${skippedCount} errors.`, skippedCount > 0 ? 'info' : 'success');
+      }
     }, 150);
   });
 
@@ -472,6 +556,110 @@ document.addEventListener('DOMContentLoaded', () => {
 
       el.appendChild(actions);
       proxyListEl.appendChild(el);
+    });
+  }
+
+  function renderPool() {
+    if (!poolListEl) return;
+    poolListEl.innerHTML = '';
+    
+    const query = poolSearch ? poolSearch.value.trim().toLowerCase() : '';
+    
+    let filtered = proxies;
+    if (query) {
+      filtered = proxies.filter(p => 
+        (p.name && p.name.toLowerCase().includes(query)) || 
+        (p.host && p.host.toLowerCase().includes(query))
+      );
+    }
+    
+    if (filtered.length === 0) {
+      poolListEl.innerHTML = '<div style="font-size: 13px; color: var(--text-muted); text-align: center; padding: 10px;">No proxies found in pool.</div>';
+      return;
+    }
+    
+    filtered.forEach(proxy => {
+      const isPinned = proxy.isPinned;
+      const el = document.createElement('div');
+      el.className = 'pool-item';
+      
+      const info = document.createElement('div');
+      info.className = 'pool-info';
+      
+      const status = document.createElement('div');
+      status.className = `pool-status ${proxy.id === activeProxyId ? 'online' : ''}`;
+      
+      const details = document.createElement('div');
+      
+      const name = document.createElement('div');
+      name.className = 'pool-name';
+      name.textContent = proxy.name || 'Unnamed';
+      
+      const addr = document.createElement('div');
+      addr.className = 'pool-address';
+      addr.textContent = `${proxy.host}:${proxy.port}`;
+      
+      details.appendChild(name);
+      details.appendChild(addr);
+      
+      info.appendChild(status);
+      info.appendChild(details);
+      
+      const actions = document.createElement('div');
+      actions.className = 'pool-actions';
+      
+      const pinBtn = document.createElement('button');
+      pinBtn.textContent = '📌';
+      pinBtn.title = isPinned ? 'Unpin from main screen' : 'Pin to main screen';
+      pinBtn.style.background = isPinned ? '#007bff' : 'transparent';
+      pinBtn.style.color = isPinned ? '#fff' : 'var(--text-muted)';
+      pinBtn.style.border = '1px solid ' + (isPinned ? '#007bff' : 'var(--border)');
+      pinBtn.style.borderRadius = '4px';
+      pinBtn.onclick = () => {
+        proxy.isPinned = !proxy.isPinned;
+        saveProxies();
+        renderProxies();
+        renderPool();
+      };
+      
+      const delBtn = document.createElement('button');
+      delBtn.className = 'btn-delete pool-del-btn';
+      delBtn.textContent = '🗑️';
+      delBtn.title = 'Delete completely';
+      delBtn.style.borderRadius = '4px';
+      let poolConfirmTimeout;
+      delBtn.onclick = (e) => {
+        if (delBtn.classList.contains('delete-confirm')) {
+          if (proxy.id === activeProxyId) setActiveProxy(null);
+          proxies = proxies.filter(p => p.id !== proxy.id);
+          saveProxies();
+          renderProxies();
+          renderPool();
+        } else {
+          document.querySelectorAll('.pool-del-btn.delete-confirm').forEach(b => {
+            b.classList.remove('delete-confirm');
+            b.textContent = '🗑️';
+          });
+          
+          delBtn.classList.add('delete-confirm');
+          delBtn.textContent = 'Sure?';
+          
+          if (poolConfirmTimeout) clearTimeout(poolConfirmTimeout);
+          poolConfirmTimeout = setTimeout(() => {
+            if (delBtn.classList.contains('delete-confirm')) {
+              delBtn.classList.remove('delete-confirm');
+              delBtn.textContent = '🗑️';
+            }
+          }, 3000);
+        }
+      };
+      
+      actions.appendChild(pinBtn);
+      actions.appendChild(delBtn);
+      
+      el.appendChild(info);
+      el.appendChild(actions);
+      poolListEl.appendChild(el);
     });
   }
 
