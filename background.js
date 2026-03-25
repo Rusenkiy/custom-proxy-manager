@@ -34,16 +34,36 @@ chrome.runtime.onStartup.addListener(() => {
 });
 
 async function applyConfig(proxy) {
-  const data = await chrome.storage.local.get(['adblockEnabled']);
+  const data = await chrome.storage.local.get(['adblockEnabled', 'proxies']);
   const adblock = !!data.adblockEnabled;
+  const proxies = data.proxies || [];
 
-  if (!proxy && !adblock) {
+  let mappingRules = "";
+  let hasMappings = false;
+
+  proxies.forEach(p => {
+    if (p.mappedDomains && p.mappedDomains.length > 0) {
+      hasMappings = true;
+      let type = p.type ? p.type.toUpperCase() : "HTTP";
+      if (type === "HTTP" || type === "HTTPS") type = "PROXY";
+      if (type === "SOCKS") type = "SOCKS5";
+      const proxyStr = `${type} ${p.host}:${p.port}`;
+      
+      const conditions = p.mappedDomains.map(domain => {
+        return `shExpMatch(host, "${domain}") || shExpMatch(host, "*.${domain}")`;
+      }).join(' || ');
+      
+      mappingRules += `\n      if (${conditions}) return "${proxyStr}";`;
+    }
+  });
+
+  if (!proxy && !adblock && !hasMappings) {
     return new Promise((resolve) => {
       chrome.proxy.settings.clear({ scope: 'regular' }, resolve);
     });
   }
   
-  if (proxy && !adblock) {
+  if (proxy && !adblock && !hasMappings) {
     const config = {
       mode: "fixed_servers",
       rules: {
@@ -60,11 +80,11 @@ async function applyConfig(proxy) {
     });
   }
 
-  // PAC script for AdBlock
   let fallback = "DIRECT";
   if (proxy) {
     let type = proxy.type ? proxy.type.toUpperCase() : "HTTP";
-    if (type === "HTTP") type = "PROXY"; // Chrome PAC syntax mapping
+    if (type === "HTTP" || type === "HTTPS") type = "PROXY";
+    if (type === "SOCKS") type = "SOCKS5";
     fallback = `${type} ${proxy.host}:${proxy.port}`;
   }
 
@@ -82,12 +102,14 @@ async function applyConfig(proxy) {
       "adsafeprotected.com"
     ];
 
-    function FindProxyForURL(url, host) {
-      for (let i = 0; i < adDomains.length; i++) {
+    function FindProxyForURL(url, host) {${mappingRules}
+
+      ${adblock ? `for (let i = 0; i < adDomains.length; i++) {
         if (dnsDomainIs(host, adDomains[i])) {
           return "PROXY 0.0.0.0:80"; // block
         }
-      }
+      }` : ''}
+
       return "${fallback}";
     }
   `;
@@ -165,6 +187,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     applyConfig(null).then(() => {
       chrome.action.setBadgeText({ text: "" });
       sendResponse({ success: true });
+    });
+    return true;
+  }
+
+  if (request.action === 'refreshConfig') {
+    chrome.storage.local.get(['activeProxyId', 'proxies'], (data) => {
+      const activeProxy = (data.proxies && data.activeProxyId) 
+        ? data.proxies.find((p) => p.id === data.activeProxyId) 
+        : null;
+      applyConfig(activeProxy).then(() => {
+        sendResponse({ success: true });
+      });
     });
     return true;
   }

@@ -417,6 +417,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function saveProxies() {
     chrome.storage.local.set({ proxies });
+    chrome.runtime.sendMessage({ action: 'refreshConfig' });
   }
 
   function setActiveProxy(id) {
