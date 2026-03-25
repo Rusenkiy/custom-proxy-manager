@@ -1,3 +1,16 @@
+let cachedAuth = null;
+
+function initAuthCache() {
+  chrome.storage.local.get(['activeProxyId', 'proxies'], (result) => {
+    if (result.activeProxyId && result.proxies) {
+      const activeProxy = result.proxies.find((p) => p.id === result.activeProxyId);
+      if (activeProxy && activeProxy.username) {
+        cachedAuth = { username: activeProxy.username, password: activeProxy.password };
+      }
+    }
+  });
+}
+
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.local.get(['activeProxyId'], (result) => {
     if (result.activeProxyId) {
@@ -98,6 +111,11 @@ chrome.webRequest.onAuthRequired.addListener(
       return;
     }
     
+    if (cachedAuth) {
+      asyncCallback({ authCredentials: cachedAuth });
+      return;
+    }
+    
     chrome.storage.local.get(['activeProxyId', 'proxies', 'pingProxy'], (result) => {
       let targetProxy = null;
       
@@ -125,6 +143,11 @@ chrome.webRequest.onAuthRequired.addListener(
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'setProxy') {
+    if (request.proxy && request.proxy.username) {
+      cachedAuth = { username: request.proxy.username, password: request.proxy.password };
+    } else {
+      cachedAuth = null;
+    }
     applyConfig(request.proxy).then(() => {
       if (request.proxy) {
         chrome.action.setBadgeText({ text: "ON" });
@@ -138,6 +161,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   } 
   
   if (request.action === 'clearProxy') {
+    cachedAuth = null;
     applyConfig(null).then(() => {
       chrome.action.setBadgeText({ text: "" });
       sendResponse({ success: true });
@@ -182,6 +206,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     async function executePingTest() {
       const proxy = request.proxy;
       
+      if (proxy && proxy.username) {
+        cachedAuth = { username: proxy.username, password: proxy.password };
+      }
+      
       await chrome.storage.local.set({ pingProxy: proxy });
       await applyConfig(proxy);
       
@@ -210,6 +238,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           ? data.proxies.find((p) => p.id === data.activeProxyId) 
           : null;
           
+        if (activeProxy && activeProxy.username) {
+          cachedAuth = { username: activeProxy.username, password: activeProxy.password };
+        } else {
+          cachedAuth = null;
+        }
         await applyConfig(activeProxy);
         sendResponse({ success: pingSuccess });
       });
@@ -219,3 +252,5 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true; 
   }
 });
+// Initialize cache immediately on SW wake
+initAuthCache();

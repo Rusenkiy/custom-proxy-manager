@@ -1,3 +1,11 @@
+function debounce(func, wait) {
+  let timeout;
+  return function(...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const themeToggleBtn = document.getElementById('themeToggleBtn');
 
@@ -115,38 +123,40 @@ document.addEventListener('DOMContentLoaded', () => {
       const origText = domain.charAt(0).toUpperCase();
       badge.textContent = origText;
       badge.title = domain;
-      
-      let confirmState = false;
-
-      badge.addEventListener('mouseleave', () => {
-        if (confirmState) {
-          confirmState = false;
-          badge.textContent = origText;
-          badge.classList.remove('unlink-confirm');
-          badge.title = domain;
-        }
-      });
-
-      badge.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (!confirmState) {
-          confirmState = true;
-          badge.textContent = 'Unlink?';
-          badge.classList.add('unlink-confirm');
-          badge.title = '';
-        } else {
-          proxy.mappedDomains = proxy.mappedDomains.filter(d => d !== domain);
-          saveProxies();
-          renderProxies();
-          if (typeof renderPool === 'function') renderPool();
-          updateFooterLinkStatus();
-          showToast(`Site unlinked`, 'success');
-        }
-      });
+      badge.dataset.action = 'unlink';
+      badge.dataset.domain = domain;
       
       badgesContainer.appendChild(badge);
     });
     containerElement.appendChild(badgesContainer);
+  }
+
+  function createInlineNameEditor(proxy, containerClass, nameClass) {
+    const nameContainer = document.createElement('div');
+    nameContainer.className = containerClass;
+    nameContainer.style.display = 'flex';
+    nameContainer.style.alignItems = 'center';
+    nameContainer.style.gap = '6px';
+    
+    const nameEl = document.createElement('span');
+    if (nameClass) nameEl.className = nameClass;
+    nameEl.textContent = proxy.name || 'Unnamed';
+    nameEl.style.cursor = 'text';
+    nameEl.dataset.action = 'edit';
+
+    const editBtn = document.createElement('span');
+    editBtn.innerHTML = '✎';
+    editBtn.title = 'Edit Name';
+    editBtn.style.cursor = 'pointer';
+    editBtn.style.fontSize = '12px';
+    editBtn.style.color = 'var(--text-muted)';
+    editBtn.style.lineHeight = '1';
+    editBtn.dataset.action = 'edit';
+
+    nameContainer.appendChild(nameEl);
+    nameContainer.appendChild(editBtn);
+    createDomainBadges(proxy, nameContainer);
+    return nameContainer;
   }
 
   async function fetchCurrentIP() {
@@ -207,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   if (poolSearch) {
-    poolSearch.addEventListener('input', renderPool);
+    poolSearch.addEventListener('input', debounce(renderPool, 200));
   }
   
   if (openPoolModalBtn) {
@@ -235,7 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (poolSearch) {
-    poolSearch.addEventListener('input', renderPool);
+    poolSearch.addEventListener('input', debounce(renderPool, 200));
   }
 
   overlay.addEventListener('click', () => {
@@ -427,6 +437,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderProxies() {
     proxyListEl.innerHTML = '';
+    const fragment = document.createDocumentFragment();
 
     const pinnedProxies = proxies.filter(p => p.isPinned);
 
@@ -439,6 +450,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const isActive = proxy.id === activeProxyId;
       const el = document.createElement('div');
       el.className = `proxy-item ${isActive ? 'active' : ''}`;
+      el.dataset.id = proxy.id;
 
       const pType = proxy.type || 'HTTP';
       const badgeEl = document.createElement('div');
@@ -447,8 +459,9 @@ document.addEventListener('DOMContentLoaded', () => {
       
       const unpinBtn = document.createElement('button');
       unpinBtn.className = 'btn-icon';
+      unpinBtn.dataset.action = 'unpin';
       unpinBtn.innerHTML = `
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg style="pointer-events:none;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24M1 1l22 22"></path>
         </svg>
       `;
@@ -456,16 +469,6 @@ document.addEventListener('DOMContentLoaded', () => {
       unpinBtn.style.top = '4px';
       unpinBtn.style.right = '40px';
       unpinBtn.title = 'Unpin Proxy';
-      unpinBtn.onclick = () => {
-        if (isActive) setActiveProxy(null);
-        proxy.isPinned = false;
-        saveProxies();
-        
-        el.style.height = el.offsetHeight + 'px';
-        el.classList.add('removing');
-        requestAnimationFrame(() => el.classList.add('removing-active'));
-        setTimeout(renderProxies, 300);
-      };
       
       el.appendChild(badgeEl);
       el.appendChild(unpinBtn);
@@ -475,75 +478,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const info = document.createElement('div');
       info.style.flexGrow = '1';
-      const nameContainer = document.createElement('div');
-      nameContainer.className = 'proxy-name-container';
-      nameContainer.style.display = 'flex';
-      nameContainer.style.alignItems = 'center';
-      nameContainer.style.gap = '6px';
-      
-      const nameEl = document.createElement('span');
-      nameEl.className = 'proxy-name';
-      nameEl.textContent = proxy.name || 'Unnamed';
-      nameEl.style.cursor = 'text';
-
-      const editBtn = document.createElement('span');
-      editBtn.innerHTML = '✎';
-      editBtn.title = 'Edit Name';
-      editBtn.style.cursor = 'pointer';
-      editBtn.style.fontSize = '12px';
-      editBtn.style.color = 'var(--text-muted)';
-      editBtn.style.lineHeight = '1';
-
-      nameContainer.appendChild(nameEl);
-      nameContainer.appendChild(editBtn);
-
-      const startEditing = () => {
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.value = proxy.name || '';
-        input.style.width = '120px';
-        input.style.fontSize = 'inherit';
-        input.style.fontFamily = 'inherit';
-        input.style.padding = '0';
-        input.style.background = 'transparent';
-        input.style.border = 'none';
-        input.style.borderBottom = '1px solid var(--text-muted)';
-        input.style.outline = 'none';
-        input.style.color = 'var(--text)';
-        
-        nameContainer.innerHTML = '';
-        nameContainer.appendChild(input);
-        
-        input.focus();
-        input.select();
-        
-        let isSaving = false;
-        const saveName = () => {
-          if (isSaving) return;
-          isSaving = true;
-          const newName = input.value.trim();
-          if (newName) {
-            proxy.name = newName;
-            saveProxies();
-          }
-          renderProxies();
-          if (typeof renderPool === 'function') renderPool();
-        };
-        
-        input.addEventListener('blur', saveName);
-        input.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') saveName();
-          if (e.key === 'Escape') {
-            isSaving = true;
-            renderProxies();
-          }
-        });
-      };
-
-      nameEl.addEventListener('click', startEditing);
-      editBtn.addEventListener('click', startEditing);
-
-      createDomainBadges(proxy, nameContainer);
+      const nameContainer = createInlineNameEditor(proxy, 'proxy-name-container', 'proxy-name');
 
       const addressEl = document.createElement('div');
       addressEl.className = 'proxy-address';
@@ -567,78 +502,31 @@ document.addEventListener('DOMContentLoaded', () => {
       if (isActive) {
         connectBtn.textContent = 'Disconnect';
         connectBtn.className = 'btn-disconnect';
-        connectBtn.onclick = () => setActiveProxy(null);
+        connectBtn.dataset.action = 'disconnect';
       } else {
         connectBtn.textContent = 'Connect';
         connectBtn.className = 'btn-connect';
-        connectBtn.onclick = () => setActiveProxy(proxy.id);
+        connectBtn.dataset.action = 'connect';
       }
       actions.appendChild(connectBtn);
 
       const pingBtn = document.createElement('button');
       pingBtn.textContent = 'Ping';
       pingBtn.className = 'btn-ping';
-      pingBtn.onclick = () => {
-        pingResult.textContent = 'Pinging...';
-        pingResult.className = 'ping-result ping-loading';
-
-        chrome.runtime.sendMessage({ action: 'pingProxy', proxy }, (response) => {
-          if (response && response.success) {
-            pingResult.textContent = '● Online';
-            pingResult.className = 'ping-result ping-success';
-          } else {
-            pingResult.textContent = '● Offline';
-            pingResult.className = 'ping-result ping-fail';
-          }
-        });
-      };
+      pingBtn.dataset.action = 'ping';
       actions.appendChild(pingBtn);
 
       const deleteBtn = document.createElement('button');
       deleteBtn.textContent = 'Delete';
       deleteBtn.className = 'btn-delete';
-      let confirmTimeout;
-      
-      deleteBtn.onclick = () => {
-        if (deleteBtn.classList.contains('delete-confirm')) {
-          if (isActive) setActiveProxy(null);
-          proxies = proxies.filter(p => p.id !== proxy.id);
-          saveProxies();
-          
-          el.style.height = el.offsetHeight + 'px'; // Fix initial height for transition
-          el.classList.add('removing');
-          
-          requestAnimationFrame(() => {
-            el.classList.add('removing-active');
-          });
-          
-          setTimeout(() => {
-            renderProxies();
-          }, 300);
-        } else {
-          // Reset others
-          document.querySelectorAll('.delete-confirm').forEach(b => {
-            b.classList.remove('delete-confirm');
-            b.textContent = 'Delete';
-          });
-          
-          deleteBtn.classList.add('delete-confirm');
-          deleteBtn.textContent = 'Confirm?';
-          
-          if (confirmTimeout) clearTimeout(confirmTimeout);
-          confirmTimeout = setTimeout(() => {
-            if (deleteBtn.classList.contains('delete-confirm')) {
-              deleteBtn.classList.remove('delete-confirm');
-              deleteBtn.textContent = 'Delete';
-            }
-          }, 3000); // 3 seconds timeout
-        }
-      };
+      deleteBtn.dataset.action = 'delete';
       actions.appendChild(deleteBtn);
 
       el.appendChild(actions);
-      proxyListEl.appendChild(el);
+      fragment.appendChild(el);
     });
+    
+    proxyListEl.appendChild(fragment);
   }
 
   function renderPool() {
@@ -660,10 +548,13 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     
+    const fragment = document.createDocumentFragment();
+    
     filtered.forEach(proxy => {
       const isPinned = proxy.isPinned;
       const el = document.createElement('div');
       el.className = 'pool-item';
+      el.dataset.id = proxy.id;
       
       const info = document.createElement('div');
       info.className = 'pool-info';
@@ -673,74 +564,7 @@ document.addEventListener('DOMContentLoaded', () => {
       
       const details = document.createElement('div');
       
-      const nameContainer = document.createElement('div');
-      nameContainer.className = 'pool-name';
-      nameContainer.style.display = 'flex';
-      nameContainer.style.alignItems = 'center';
-      nameContainer.style.gap = '6px';
-      
-      const nameEl = document.createElement('span');
-      nameEl.textContent = proxy.name || 'Unnamed';
-      nameEl.style.cursor = 'text';
-
-      const editBtn = document.createElement('span');
-      editBtn.innerHTML = '✎';
-      editBtn.title = 'Edit Name';
-      editBtn.style.cursor = 'pointer';
-      editBtn.style.fontSize = '12px';
-      editBtn.style.color = 'var(--text-muted)';
-      editBtn.style.lineHeight = '1';
-
-      nameContainer.appendChild(nameEl);
-      nameContainer.appendChild(editBtn);
-
-      const startEditing = () => {
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.value = proxy.name || '';
-        input.style.width = '120px';
-        input.style.fontSize = 'inherit';
-        input.style.fontFamily = 'inherit';
-        input.style.padding = '0';
-        input.style.background = 'transparent';
-        input.style.border = 'none';
-        input.style.borderBottom = '1px solid var(--text-muted)';
-        input.style.outline = 'none';
-        input.style.color = 'var(--text)';
-        
-        nameContainer.innerHTML = '';
-        nameContainer.appendChild(input);
-        
-        input.focus();
-        input.select();
-        
-        let isSaving = false;
-        const saveName = () => {
-          if (isSaving) return;
-          isSaving = true;
-          const newName = input.value.trim();
-          if (newName) {
-            proxy.name = newName;
-            saveProxies();
-          }
-          renderProxies();
-          renderPool();
-        };
-        
-        input.addEventListener('blur', saveName);
-        input.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') saveName();
-          if (e.key === 'Escape') {
-            isSaving = true;
-            renderPool();
-          }
-        });
-      };
-
-      nameEl.addEventListener('click', startEditing);
-      editBtn.addEventListener('click', startEditing);
-
-      createDomainBadges(proxy, nameContainer);
+      const nameContainer = createInlineNameEditor(proxy, 'pool-name');
       
       const addr = document.createElement('div');
       addr.className = 'pool-address';
@@ -759,86 +583,30 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectBtn = document.createElement('button');
         selectBtn.textContent = '🔗 Select';
         selectBtn.className = 'pool-sel-btn';
+        selectBtn.dataset.action = 'select';
         selectBtn.style.background = 'var(--accent, #007bff)';
         selectBtn.style.color = '#fff';
         selectBtn.style.border = 'none';
         selectBtn.style.padding = '4px 8px';
         selectBtn.style.borderRadius = '4px';
         selectBtn.style.cursor = 'pointer';
-        selectBtn.onclick = () => {
-          const existingProxy = proxies.find(p => p.mappedDomains && p.mappedDomains.includes(currentDomainToBind));
-          if (existingProxy && existingProxy.id !== proxy.id) {
-            showToast(`Domain is already linked to ${existingProxy.name}`, 'error');
-            return;
-          }
-          if (!proxy.mappedDomains.includes(currentDomainToBind)) {
-            proxy.mappedDomains.push(currentDomainToBind);
-            saveProxies();
-            renderProxies();
-            updateFooterLinkStatus();
-            showToast(`Domain linked to ${proxy.name}`, 'success');
-          } else {
-            showToast(`Domain is already linked to this proxy`, 'info');
-          }
-          
-          isSelectionMode = false;
-          renderPool();
-          const poolModal = document.getElementById('pool-modal');
-          const overlay = document.getElementById('overlay');
-          if (poolModal) poolModal.classList.remove('show');
-          if (overlay) overlay.classList.remove('show');
-          setTimeout(() => {
-            if (poolModal) poolModal.style.display = 'none';
-            if (overlay) overlay.style.display = 'none';
-          }, 150);
-        };
         actions.appendChild(selectBtn);
       } else {
         const pinBtn = document.createElement('button');
         pinBtn.textContent = '📌';
+        pinBtn.dataset.action = 'pin';
         pinBtn.title = isPinned ? 'Unpin from main screen' : 'Pin to main screen';
         pinBtn.style.background = isPinned ? '#007bff' : 'transparent';
         pinBtn.style.color = isPinned ? '#fff' : 'var(--text-muted)';
         pinBtn.style.border = '1px solid ' + (isPinned ? '#007bff' : 'var(--border)');
         pinBtn.style.borderRadius = '4px';
-        pinBtn.onclick = () => {
-          proxy.isPinned = !proxy.isPinned;
-          saveProxies();
-          renderProxies();
-          renderPool();
-        };
         
         const delBtn = document.createElement('button');
         delBtn.className = 'btn-delete pool-del-btn';
+        delBtn.dataset.action = 'delete';
         delBtn.textContent = '🗑️';
         delBtn.title = 'Delete completely';
         delBtn.style.borderRadius = '4px';
-        let poolConfirmTimeout;
-        delBtn.onclick = (e) => {
-          if (delBtn.classList.contains('delete-confirm')) {
-            if (proxy.id === activeProxyId) setActiveProxy(null);
-            proxies = proxies.filter(p => p.id !== proxy.id);
-            saveProxies();
-            renderProxies();
-            renderPool();
-          } else {
-            document.querySelectorAll('.pool-del-btn.delete-confirm').forEach(b => {
-              b.classList.remove('delete-confirm');
-              b.textContent = '🗑️';
-            });
-            
-            delBtn.classList.add('delete-confirm');
-            delBtn.textContent = 'Sure?';
-            
-            if (poolConfirmTimeout) clearTimeout(poolConfirmTimeout);
-            poolConfirmTimeout = setTimeout(() => {
-              if (delBtn.classList.contains('delete-confirm')) {
-                delBtn.classList.remove('delete-confirm');
-                delBtn.textContent = '🗑️';
-              }
-            }, 3000);
-          }
-        };
         
         actions.appendChild(pinBtn);
         actions.appendChild(delBtn);
@@ -846,8 +614,10 @@ document.addEventListener('DOMContentLoaded', () => {
       
       el.appendChild(info);
       el.appendChild(actions);
-      poolListEl.appendChild(el);
+      fragment.appendChild(el);
     });
+    
+    poolListEl.appendChild(fragment);
   }
 
   // Get current tab domain
@@ -887,4 +657,311 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+
+  let confirmTimeout;
+  if (proxyListEl && !proxyListEl.dataset.delegated) {
+    proxyListEl.dataset.delegated = 'true';
+    proxyListEl.addEventListener('click', async (e) => {
+      const btn = e.target.closest('[data-action]');
+      if (!btn || !btn.dataset.action) return;
+      
+      const item = e.target.closest('.proxy-item');
+      if (!item) return;
+      
+      const proxyId = item.dataset.id;
+      const proxy = proxies.find(p => p.id === proxyId);
+      if (!proxy) return;
+
+            if (btn.dataset.action === 'edit') {
+        const nameContainer = btn.closest('.' + (item.classList.contains('proxy-item') ? 'proxy-name-container' : 'pool-name'));
+        if (!nameContainer) return;
+        
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = proxy.name || '';
+        input.style.width = '120px';
+        input.style.fontSize = 'inherit';
+        input.style.fontFamily = 'inherit';
+        input.style.padding = '0';
+        input.style.background = 'transparent';
+        input.style.border = 'none';
+        input.style.borderBottom = '1px solid var(--text-muted)';
+        input.style.outline = 'none';
+        input.style.color = 'var(--text)';
+        
+        nameContainer.innerHTML = '';
+        nameContainer.appendChild(input);
+        
+        input.focus();
+        input.select();
+        
+        let isSaving = false;
+        const saveName = () => {
+          if (isSaving) return;
+          isSaving = true;
+          const newName = input.value.trim();
+          if (newName) {
+            proxy.name = newName;
+            saveProxies();
+          }
+          renderProxies();
+          if (typeof renderPool === 'function') renderPool();
+        };
+        
+        input.addEventListener('blur', saveName);
+        input.addEventListener('keydown', (evt) => {
+          if (evt.key === 'Enter') saveName();
+          if (evt.key === 'Escape') {
+            isSaving = true;
+            renderProxies();
+            if (typeof renderPool === 'function') renderPool();
+          }
+        });
+      } else if (btn.dataset.action === 'unlink') {
+        const domain = btn.dataset.domain;
+        if (!domain) return;
+        
+        if (btn.classList.contains('unlink-confirm')) {
+          proxy.mappedDomains = proxy.mappedDomains.filter(d => d !== domain);
+          saveProxies();
+          renderProxies();
+          if (typeof renderPool === 'function') renderPool();
+          if (typeof updateFooterLinkStatus === 'function') updateFooterLinkStatus();
+          showToast('Site unlinked', 'success');
+        } else {
+          document.querySelectorAll('.unlink-confirm').forEach(b => {
+            b.classList.remove('unlink-confirm');
+            b.textContent = b.dataset.domain.charAt(0).toUpperCase();
+            b.title = b.dataset.domain;
+          });
+          
+          btn.classList.add('unlink-confirm');
+          btn.textContent = 'Unlink?';
+          btn.title = '';
+          
+          btn.addEventListener('mouseleave', function resetUnlink() {
+              if (btn.classList.contains('unlink-confirm')) {
+                  btn.classList.remove('unlink-confirm');
+                  btn.textContent = domain.charAt(0).toUpperCase();
+                  btn.title = domain;
+              }
+              btn.removeEventListener('mouseleave', resetUnlink);
+          }, { once: true });
+        }
+      } else if (btn.dataset.action === 'connect') {
+        setActiveProxy(proxyId);
+        chrome.runtime.sendMessage({ action: 'setProxy', proxy: proxy });
+      } else if (btn.dataset.action === 'disconnect') {
+        setActiveProxy(null);
+        chrome.runtime.sendMessage({ action: 'clearProxy' });
+      } else if (btn.dataset.action === 'ping') {
+        btn.textContent = '...';
+        const pingResult = document.getElementById(`ping-result-${proxy.id}`);
+        if (pingResult) {
+          pingResult.textContent = 'Pinging...';
+          pingResult.className = 'ping-result ping-loading';
+        }
+        chrome.runtime.sendMessage({ action: 'pingProxy', proxy }, (response) => {
+          if (pingResult) {
+            if (response && response.success) {
+              pingResult.textContent = '● Online';
+              pingResult.className = 'ping-result ping-success';
+            } else {
+              pingResult.textContent = '● Offline';
+              pingResult.className = 'ping-result ping-fail';
+            }
+          }
+          btn.textContent = 'Ping';
+        });
+      } else if (btn.dataset.action === 'unpin') {
+        if (activeProxyId === proxy.id) setActiveProxy(null);
+        proxy.isPinned = false;
+        saveProxies();
+        item.style.height = item.offsetHeight + 'px';
+        item.classList.add('removing');
+        requestAnimationFrame(() => item.classList.add('removing-active'));
+        setTimeout(renderProxies, 300);
+      } else if (btn.dataset.action === 'delete') {
+        if (btn.classList.contains('delete-confirm')) {
+          if (activeProxyId === proxyId) setActiveProxy(null);
+          proxies = proxies.filter(p => p.id !== proxyId);
+          saveProxies();
+          
+          item.style.height = item.offsetHeight + 'px';
+          item.classList.add('removing');
+          requestAnimationFrame(() => item.classList.add('removing-active'));
+          setTimeout(() => renderProxies(), 300);
+        } else {
+          document.querySelectorAll('.delete-confirm').forEach(b => {
+            b.classList.remove('delete-confirm');
+            b.textContent = 'Delete';
+          });
+          
+          btn.classList.add('delete-confirm');
+          btn.textContent = 'Confirm?';
+          
+          if (confirmTimeout) clearTimeout(confirmTimeout);
+          confirmTimeout = setTimeout(() => {
+            if (btn.classList.contains('delete-confirm')) {
+              btn.classList.remove('delete-confirm');
+              btn.textContent = 'Delete';
+            }
+          }, 3000);
+        }
+      }
+    });
+  }
+
+  let poolConfirmTimeout;
+  if (poolListEl && !poolListEl.dataset.delegated) {
+    poolListEl.dataset.delegated = 'true';
+    poolListEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-action]');
+      if (!btn || !btn.dataset.action) return;
+      
+      const item = e.target.closest('.pool-item');
+      if (!item) return;
+      
+      const proxyId = item.dataset.id;
+      const proxy = proxies.find(p => p.id === proxyId);
+      if (!proxy) return;
+
+            if (btn.dataset.action === 'edit') {
+        const nameContainer = btn.closest('.' + (item.classList.contains('proxy-item') ? 'proxy-name-container' : 'pool-name'));
+        if (!nameContainer) return;
+        
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = proxy.name || '';
+        input.style.width = '120px';
+        input.style.fontSize = 'inherit';
+        input.style.fontFamily = 'inherit';
+        input.style.padding = '0';
+        input.style.background = 'transparent';
+        input.style.border = 'none';
+        input.style.borderBottom = '1px solid var(--text-muted)';
+        input.style.outline = 'none';
+        input.style.color = 'var(--text)';
+        
+        nameContainer.innerHTML = '';
+        nameContainer.appendChild(input);
+        
+        input.focus();
+        input.select();
+        
+        let isSaving = false;
+        const saveName = () => {
+          if (isSaving) return;
+          isSaving = true;
+          const newName = input.value.trim();
+          if (newName) {
+            proxy.name = newName;
+            saveProxies();
+          }
+          renderProxies();
+          if (typeof renderPool === 'function') renderPool();
+        };
+        
+        input.addEventListener('blur', saveName);
+        input.addEventListener('keydown', (evt) => {
+          if (evt.key === 'Enter') saveName();
+          if (evt.key === 'Escape') {
+            isSaving = true;
+            renderProxies();
+            if (typeof renderPool === 'function') renderPool();
+          }
+        });
+      } else if (btn.dataset.action === 'unlink') {
+        const domain = btn.dataset.domain;
+        if (!domain) return;
+        
+        if (btn.classList.contains('unlink-confirm')) {
+          proxy.mappedDomains = proxy.mappedDomains.filter(d => d !== domain);
+          saveProxies();
+          renderProxies();
+          if (typeof renderPool === 'function') renderPool();
+          if (typeof updateFooterLinkStatus === 'function') updateFooterLinkStatus();
+          showToast('Site unlinked', 'success');
+        } else {
+          document.querySelectorAll('.unlink-confirm').forEach(b => {
+            b.classList.remove('unlink-confirm');
+            b.textContent = b.dataset.domain.charAt(0).toUpperCase();
+            b.title = b.dataset.domain;
+          });
+          
+          btn.classList.add('unlink-confirm');
+          btn.textContent = 'Unlink?';
+          btn.title = '';
+          
+          btn.addEventListener('mouseleave', function resetUnlink() {
+              if (btn.classList.contains('unlink-confirm')) {
+                  btn.classList.remove('unlink-confirm');
+                  btn.textContent = domain.charAt(0).toUpperCase();
+                  btn.title = domain;
+              }
+              btn.removeEventListener('mouseleave', resetUnlink);
+          }, { once: true });
+        }
+      } else if (btn.dataset.action === 'select') {
+        const existingProxy = proxies.find(p => p.mappedDomains && p.mappedDomains.includes(currentDomainToBind));
+        if (existingProxy && existingProxy.id !== proxy.id) {
+          showToast(`Domain is already linked to ${existingProxy.name}`, 'error');
+          return;
+        }
+        if (!proxy.mappedDomains.includes(currentDomainToBind)) {
+          proxy.mappedDomains.push(currentDomainToBind);
+          saveProxies();
+          renderProxies();
+          updateFooterLinkStatus();
+          showToast(`Domain linked to ${proxy.name}`, 'success');
+        } else {
+          showToast(`Domain is already linked to this proxy`, 'info');
+        }
+        
+        isSelectionMode = false;
+        renderPool();
+        const poolModal = document.getElementById('pool-modal');
+        const overlay = document.getElementById('overlay');
+        if (poolModal) poolModal.classList.remove('show');
+        if (overlay) overlay.classList.remove('show');
+        setTimeout(() => {
+          if (poolModal) poolModal.style.display = 'none';
+          if (overlay) overlay.style.display = 'none';
+        }, 150);
+      } else if (btn.dataset.action === 'pin') {
+        proxy.isPinned = !proxy.isPinned;
+        saveProxies();
+        renderProxies();
+        renderPool();
+      } else if (btn.dataset.action === 'delete') {
+        if (btn.classList.contains('delete-confirm')) {
+          if (proxy.id === activeProxyId) setActiveProxy(null);
+          proxies = proxies.filter(p => p.id !== proxyId);
+          saveProxies();
+          
+          item.style.height = item.offsetHeight + 'px';
+          item.classList.add('removing');
+          requestAnimationFrame(() => item.classList.add('removing-active'));
+          setTimeout(() => renderPool(), 300);
+        } else {
+          document.querySelectorAll('.pool-del-btn.delete-confirm').forEach(b => {
+            b.classList.remove('delete-confirm');
+            b.textContent = '🗑️';
+          });
+          
+          btn.classList.add('delete-confirm');
+          btn.textContent = 'Sure?';
+          
+          if (poolConfirmTimeout) clearTimeout(poolConfirmTimeout);
+          poolConfirmTimeout = setTimeout(() => {
+            if (btn.classList.contains('delete-confirm')) {
+              btn.classList.remove('delete-confirm');
+              btn.textContent = '🗑️';
+            }
+          }, 3000);
+        }
+      }
+    });
+  }
+
 });
