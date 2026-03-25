@@ -549,6 +549,34 @@
       white-space: nowrap; text-overflow: ellipsis; overflow: hidden;
       max-width: 140px;
     }
+    .domain-badges {
+      display: flex;
+      gap: 4px;
+      margin-top: 4px;
+    }
+    .domain-badge {
+      min-width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      cursor: pointer;
+      box-sizing: border-box;
+      padding: 0;
+    }
+    .domain-badge.unlink-confirm {
+      border-radius: 8px;
+      background: #dc3545;
+      color: #fff;
+      border-color: #dc3545;
+      padding: 0 6px;
+    }
     .pool-address {
       color: var(--text-muted); font-size: 11px;
     }
@@ -655,9 +683,10 @@
 
   <div id="proxy-list" class="proxy-list scrollable-area"></div>
 
-  <div id="fixed-footer">
+  <div id="fixed-footer" style="display: flex; align-items: center;">
     <span style="margin-right: 6px; font-size: 14px;">🌐</span>
     <span id="current-domain">Fetching site...</span>
+    <button id="footerBindBtn" title="Bind Domain to Proxy" class="btn-icon" style="margin-left:auto; display:none; padding:2px;">🔗</button>
   </div>
 
   <div id="overlay"></div>

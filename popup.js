@@ -84,9 +84,70 @@ document.addEventListener('DOMContentLoaded', () => {
   const closePoolModalBtn = document.getElementById('closePoolModalBtn');
   const poolSearch = document.getElementById('pool-search');
   const poolListEl = document.getElementById('pool-list');
+  const footerBindBtn = document.getElementById('footerBindBtn');
 
   const ipText = document.getElementById('ip-text');
   const refreshIpBtn = document.getElementById('refresh-ip-btn');
+
+  let isSelectionMode = false;
+  let currentDomainToBind = '';
+
+  function updateFooterLinkStatus() {
+    if (!footerBindBtn || !currentDomainToBind) return;
+    const isLinked = proxies.some(p => p.mappedDomains && p.mappedDomains.includes(currentDomainToBind));
+    if (isLinked) {
+      footerBindBtn.style.color = 'var(--accent, #007bff)';
+      footerBindBtn.title = 'Domain is linked';
+    } else {
+      footerBindBtn.style.color = 'var(--text-muted)';
+      footerBindBtn.title = 'Bind Domain to Proxy';
+    }
+  }
+
+  function createDomainBadges(proxy, containerElement) {
+    if (!proxy.mappedDomains || proxy.mappedDomains.length === 0) return;
+    const badgesContainer = document.createElement('div');
+    badgesContainer.className = 'domain-badges';
+    
+    proxy.mappedDomains.forEach(domain => {
+      const badge = document.createElement('div');
+      badge.className = 'domain-badge';
+      const origText = domain.charAt(0).toUpperCase();
+      badge.textContent = origText;
+      badge.title = domain;
+      
+      let confirmState = false;
+
+      badge.addEventListener('mouseleave', () => {
+        if (confirmState) {
+          confirmState = false;
+          badge.textContent = origText;
+          badge.classList.remove('unlink-confirm');
+          badge.title = domain;
+        }
+      });
+
+      badge.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!confirmState) {
+          confirmState = true;
+          badge.textContent = 'Unlink?';
+          badge.classList.add('unlink-confirm');
+          badge.title = '';
+        } else {
+          proxy.mappedDomains = proxy.mappedDomains.filter(d => d !== domain);
+          saveProxies();
+          renderProxies();
+          if (typeof renderPool === 'function') renderPool();
+          updateFooterLinkStatus();
+          showToast(`Site unlinked`, 'success');
+        }
+      });
+      
+      badgesContainer.appendChild(badge);
+    });
+    containerElement.appendChild(badgesContainer);
+  }
 
   async function fetchCurrentIP() {
     if (ipText) ipText.textContent = 'My IP: Fetching...';
@@ -162,6 +223,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (closePoolModalBtn) {
     closePoolModalBtn.addEventListener('click', () => {
+      isSelectionMode = false;
+      if (typeof renderPool === 'function') renderPool();
       poolModal.classList.remove('show');
       overlay.classList.remove('show');
       setTimeout(() => {
@@ -176,6 +239,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   overlay.addEventListener('click', () => {
+    isSelectionMode = false;
+    if (typeof renderPool === 'function') renderPool();
     settingsMenu.classList.remove('show');
     bulkImportModal.classList.remove('show');
     if (poolModal) poolModal.classList.remove('show');
@@ -209,7 +274,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (result.proxies) {
       proxies = result.proxies.map(p => ({
         ...p,
-        isPinned: p.isPinned === undefined ? true : p.isPinned
+        isPinned: p.isPinned === undefined ? true : p.isPinned,
+        mappedDomains: Array.isArray(p.mappedDomains) ? p.mappedDomains : []
       }));
       chrome.storage.local.set({ proxies });
     }
@@ -263,6 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
       username: document.getElementById('username').value,
       password: document.getElementById('password').value,
       isPinned: true,
+      mappedDomains: []
     };
 
     proxies.push(newProxy);
@@ -311,7 +378,8 @@ document.addEventListener('DOMContentLoaded', () => {
           port,
           username,
           password,
-          isPinned: false
+          isPinned: false,
+          mappedDomains: []
         };
         proxies.push(newProxy);
         addedCount++;
@@ -407,22 +475,76 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const info = document.createElement('div');
       info.style.flexGrow = '1';
-      
       const nameContainer = document.createElement('div');
       nameContainer.className = 'proxy-name-container';
+      nameContainer.style.display = 'flex';
+      nameContainer.style.alignItems = 'center';
+      nameContainer.style.gap = '6px';
       
-      const nameEl = document.createElement('div');
+      const nameEl = document.createElement('span');
       nameEl.className = 'proxy-name';
-      nameEl.textContent = proxy.name;
-      
-      const editBtn = document.createElement('button');
-      editBtn.className = 'btn-icon';
+      nameEl.textContent = proxy.name || 'Unnamed';
+      nameEl.style.cursor = 'text';
+
+      const editBtn = document.createElement('span');
       editBtn.innerHTML = '✎';
       editBtn.title = 'Edit Name';
-      
+      editBtn.style.cursor = 'pointer';
+      editBtn.style.fontSize = '12px';
+      editBtn.style.color = 'var(--text-muted)';
+      editBtn.style.lineHeight = '1';
+
       nameContainer.appendChild(nameEl);
       nameContainer.appendChild(editBtn);
-      
+
+      const startEditing = () => {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = proxy.name || '';
+        input.style.width = '120px';
+        input.style.fontSize = 'inherit';
+        input.style.fontFamily = 'inherit';
+        input.style.padding = '0';
+        input.style.background = 'transparent';
+        input.style.border = 'none';
+        input.style.borderBottom = '1px solid var(--text-muted)';
+        input.style.outline = 'none';
+        input.style.color = 'var(--text)';
+        
+        nameContainer.innerHTML = '';
+        nameContainer.appendChild(input);
+        
+        input.focus();
+        input.select();
+        
+        let isSaving = false;
+        const saveName = () => {
+          if (isSaving) return;
+          isSaving = true;
+          const newName = input.value.trim();
+          if (newName) {
+            proxy.name = newName;
+            saveProxies();
+          }
+          renderProxies();
+          if (typeof renderPool === 'function') renderPool();
+        };
+        
+        input.addEventListener('blur', saveName);
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') saveName();
+          if (e.key === 'Escape') {
+            isSaving = true;
+            renderProxies();
+          }
+        });
+      };
+
+      nameEl.addEventListener('click', startEditing);
+      editBtn.addEventListener('click', startEditing);
+
+      createDomainBadges(proxy, nameContainer);
+
       const addressEl = document.createElement('div');
       addressEl.className = 'proxy-address';
       addressEl.textContent = `${proxy.host}:${proxy.port}`;
@@ -430,46 +552,6 @@ document.addEventListener('DOMContentLoaded', () => {
       info.appendChild(nameContainer);
       info.appendChild(addressEl);
       header.appendChild(info);
-      
-      // Edit button logic
-      editBtn.addEventListener('click', () => {
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'edit-input';
-        input.value = proxy.name;
-        
-        const saveBtn = document.createElement('button');
-        saveBtn.className = 'btn-icon';
-        saveBtn.innerHTML = '✓';
-        saveBtn.title = 'Save';
-        
-        nameContainer.innerHTML = '';
-        nameContainer.appendChild(input);
-        nameContainer.appendChild(saveBtn);
-        input.focus();
-        
-        let isSaving = false;
-        const saveName = () => {
-          if (isSaving) return;
-          isSaving = true;
-          const newName = input.value.trim() || proxy.name;
-          proxy.name = newName;
-          saveProxies();
-          renderProxies();
-        };
-        
-        // Use mousedown to prevent input blur event race condition
-        saveBtn.addEventListener('mousedown', (e) => {
-          e.preventDefault();
-          saveName();
-        });
-        
-        input.addEventListener('blur', saveName);
-        input.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') saveName();
-          if (e.key === 'Escape') renderProxies(); // Cancel on escape
-        });
-      });
 
       const pingResult = document.createElement('div');
       pingResult.className = 'ping-result';
@@ -591,15 +673,80 @@ document.addEventListener('DOMContentLoaded', () => {
       
       const details = document.createElement('div');
       
-      const name = document.createElement('div');
-      name.className = 'pool-name';
-      name.textContent = proxy.name || 'Unnamed';
+      const nameContainer = document.createElement('div');
+      nameContainer.className = 'pool-name';
+      nameContainer.style.display = 'flex';
+      nameContainer.style.alignItems = 'center';
+      nameContainer.style.gap = '6px';
+      
+      const nameEl = document.createElement('span');
+      nameEl.textContent = proxy.name || 'Unnamed';
+      nameEl.style.cursor = 'text';
+
+      const editBtn = document.createElement('span');
+      editBtn.innerHTML = '✎';
+      editBtn.title = 'Edit Name';
+      editBtn.style.cursor = 'pointer';
+      editBtn.style.fontSize = '12px';
+      editBtn.style.color = 'var(--text-muted)';
+      editBtn.style.lineHeight = '1';
+
+      nameContainer.appendChild(nameEl);
+      nameContainer.appendChild(editBtn);
+
+      const startEditing = () => {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = proxy.name || '';
+        input.style.width = '120px';
+        input.style.fontSize = 'inherit';
+        input.style.fontFamily = 'inherit';
+        input.style.padding = '0';
+        input.style.background = 'transparent';
+        input.style.border = 'none';
+        input.style.borderBottom = '1px solid var(--text-muted)';
+        input.style.outline = 'none';
+        input.style.color = 'var(--text)';
+        
+        nameContainer.innerHTML = '';
+        nameContainer.appendChild(input);
+        
+        input.focus();
+        input.select();
+        
+        let isSaving = false;
+        const saveName = () => {
+          if (isSaving) return;
+          isSaving = true;
+          const newName = input.value.trim();
+          if (newName) {
+            proxy.name = newName;
+            saveProxies();
+          }
+          renderProxies();
+          renderPool();
+        };
+        
+        input.addEventListener('blur', saveName);
+        input.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') saveName();
+          if (e.key === 'Escape') {
+            isSaving = true;
+            renderPool();
+          }
+        });
+      };
+
+      nameEl.addEventListener('click', startEditing);
+      editBtn.addEventListener('click', startEditing);
+
+      createDomainBadges(proxy, nameContainer);
       
       const addr = document.createElement('div');
       addr.className = 'pool-address';
       addr.textContent = `${proxy.host}:${proxy.port}`;
       
-      details.appendChild(name);
+      details.appendChild(nameContainer);
       details.appendChild(addr);
       
       info.appendChild(status);
@@ -608,54 +755,94 @@ document.addEventListener('DOMContentLoaded', () => {
       const actions = document.createElement('div');
       actions.className = 'pool-actions';
       
-      const pinBtn = document.createElement('button');
-      pinBtn.textContent = '📌';
-      pinBtn.title = isPinned ? 'Unpin from main screen' : 'Pin to main screen';
-      pinBtn.style.background = isPinned ? '#007bff' : 'transparent';
-      pinBtn.style.color = isPinned ? '#fff' : 'var(--text-muted)';
-      pinBtn.style.border = '1px solid ' + (isPinned ? '#007bff' : 'var(--border)');
-      pinBtn.style.borderRadius = '4px';
-      pinBtn.onclick = () => {
-        proxy.isPinned = !proxy.isPinned;
-        saveProxies();
-        renderProxies();
-        renderPool();
-      };
-      
-      const delBtn = document.createElement('button');
-      delBtn.className = 'btn-delete pool-del-btn';
-      delBtn.textContent = '🗑️';
-      delBtn.title = 'Delete completely';
-      delBtn.style.borderRadius = '4px';
-      let poolConfirmTimeout;
-      delBtn.onclick = (e) => {
-        if (delBtn.classList.contains('delete-confirm')) {
-          if (proxy.id === activeProxyId) setActiveProxy(null);
-          proxies = proxies.filter(p => p.id !== proxy.id);
+      if (isSelectionMode) {
+        const selectBtn = document.createElement('button');
+        selectBtn.textContent = '🔗 Select';
+        selectBtn.className = 'pool-sel-btn';
+        selectBtn.style.background = 'var(--accent, #007bff)';
+        selectBtn.style.color = '#fff';
+        selectBtn.style.border = 'none';
+        selectBtn.style.padding = '4px 8px';
+        selectBtn.style.borderRadius = '4px';
+        selectBtn.style.cursor = 'pointer';
+        selectBtn.onclick = () => {
+          const existingProxy = proxies.find(p => p.mappedDomains && p.mappedDomains.includes(currentDomainToBind));
+          if (existingProxy && existingProxy.id !== proxy.id) {
+            showToast(`Domain is already linked to ${existingProxy.name}`, 'error');
+            return;
+          }
+          if (!proxy.mappedDomains.includes(currentDomainToBind)) {
+            proxy.mappedDomains.push(currentDomainToBind);
+            saveProxies();
+            renderProxies();
+            updateFooterLinkStatus();
+            showToast(`Domain linked to ${proxy.name}`, 'success');
+          } else {
+            showToast(`Domain is already linked to this proxy`, 'info');
+          }
+          
+          isSelectionMode = false;
+          renderPool();
+          const poolModal = document.getElementById('pool-modal');
+          const overlay = document.getElementById('overlay');
+          if (poolModal) poolModal.classList.remove('show');
+          if (overlay) overlay.classList.remove('show');
+          setTimeout(() => {
+            if (poolModal) poolModal.style.display = 'none';
+            if (overlay) overlay.style.display = 'none';
+          }, 150);
+        };
+        actions.appendChild(selectBtn);
+      } else {
+        const pinBtn = document.createElement('button');
+        pinBtn.textContent = '📌';
+        pinBtn.title = isPinned ? 'Unpin from main screen' : 'Pin to main screen';
+        pinBtn.style.background = isPinned ? '#007bff' : 'transparent';
+        pinBtn.style.color = isPinned ? '#fff' : 'var(--text-muted)';
+        pinBtn.style.border = '1px solid ' + (isPinned ? '#007bff' : 'var(--border)');
+        pinBtn.style.borderRadius = '4px';
+        pinBtn.onclick = () => {
+          proxy.isPinned = !proxy.isPinned;
           saveProxies();
           renderProxies();
           renderPool();
-        } else {
-          document.querySelectorAll('.pool-del-btn.delete-confirm').forEach(b => {
-            b.classList.remove('delete-confirm');
-            b.textContent = '🗑️';
-          });
-          
-          delBtn.classList.add('delete-confirm');
-          delBtn.textContent = 'Sure?';
-          
-          if (poolConfirmTimeout) clearTimeout(poolConfirmTimeout);
-          poolConfirmTimeout = setTimeout(() => {
-            if (delBtn.classList.contains('delete-confirm')) {
-              delBtn.classList.remove('delete-confirm');
-              delBtn.textContent = '🗑️';
-            }
-          }, 3000);
-        }
-      };
-      
-      actions.appendChild(pinBtn);
-      actions.appendChild(delBtn);
+        };
+        
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn-delete pool-del-btn';
+        delBtn.textContent = '🗑️';
+        delBtn.title = 'Delete completely';
+        delBtn.style.borderRadius = '4px';
+        let poolConfirmTimeout;
+        delBtn.onclick = (e) => {
+          if (delBtn.classList.contains('delete-confirm')) {
+            if (proxy.id === activeProxyId) setActiveProxy(null);
+            proxies = proxies.filter(p => p.id !== proxy.id);
+            saveProxies();
+            renderProxies();
+            renderPool();
+          } else {
+            document.querySelectorAll('.pool-del-btn.delete-confirm').forEach(b => {
+              b.classList.remove('delete-confirm');
+              b.textContent = '🗑️';
+            });
+            
+            delBtn.classList.add('delete-confirm');
+            delBtn.textContent = 'Sure?';
+            
+            if (poolConfirmTimeout) clearTimeout(poolConfirmTimeout);
+            poolConfirmTimeout = setTimeout(() => {
+              if (delBtn.classList.contains('delete-confirm')) {
+                delBtn.classList.remove('delete-confirm');
+                delBtn.textContent = '🗑️';
+              }
+            }, 3000);
+          }
+        };
+        
+        actions.appendChild(pinBtn);
+        actions.appendChild(delBtn);
+      }
       
       el.appendChild(info);
       el.appendChild(actions);
@@ -669,11 +856,34 @@ document.addEventListener('DOMContentLoaded', () => {
       if (tabs[0] && tabs[0].url) {
         try {
           let url = new URL(tabs[0].url);
-          const domainEl = document.getElementById('current-domain');
-          if (domainEl) {
-            domainEl.textContent = url.hostname;
+          if (url.protocol.startsWith('http')) {
+            const domainEl = document.getElementById('current-domain');
+            if (domainEl) {
+              domainEl.textContent = url.hostname;
+              currentDomainToBind = url.hostname;
+              if (footerBindBtn) {
+                footerBindBtn.style.display = 'block';
+                updateFooterLinkStatus();
+              }
+            }
           }
         } catch(e) {}
+      }
+    });
+  }
+
+  if (footerBindBtn) {
+    footerBindBtn.addEventListener('click', () => {
+      isSelectionMode = true;
+      if (typeof renderPool === 'function') renderPool();
+      const poolModal = document.getElementById('pool-modal');
+      if (poolModal) {
+        overlay.style.display = 'block';
+        poolModal.style.display = 'flex';
+        setTimeout(() => {
+          overlay.classList.add('show');
+          poolModal.classList.add('show');
+        }, 10);
       }
     });
   }
