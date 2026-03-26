@@ -79,17 +79,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const proxyListEl = document.getElementById('proxy-list');
   const toggleBtn = document.getElementById('toggleFormBtn');
   const formContainer = document.getElementById('addProxyFormContainer');
-  const settingsBtn = document.getElementById('settingsBtn');
   const overlay = document.getElementById('overlay');
-  const settingsMenu = document.getElementById('settings-menu');
-  const openBulkImportBtn = document.getElementById('openBulkImportBtn');
   const bulkImportModal = document.getElementById('bulk-import-modal');
-  const closeBulkImportModalBtn = document.getElementById('closeBulkImportModalBtn');
   const bulkImportForm = document.getElementById('bulk-import-form');
   
-  const openPoolModalBtn = document.getElementById('openPoolModalBtn');
   const poolModal = document.getElementById('pool-modal');
-  const closePoolModalBtn = document.getElementById('closePoolModalBtn');
   const poolSearch = document.getElementById('pool-search');
   const poolListEl = document.getElementById('pool-list');
   const footerBindBtn = document.getElementById('footerBindBtn');
@@ -208,75 +202,65 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  settingsBtn.addEventListener('click', () => {
-    overlay.style.display = 'block';
-    setTimeout(() => {
-      overlay.classList.add('show');
-      settingsMenu.classList.add('show');
-    }, 10);
+  if (poolSearch) {
+    poolSearch.addEventListener('input', debounce(renderPool, 200));
+  }
+
+  // ── Universal Modal Opener (data-target stacking) ──────────────────────────
+  document.addEventListener('click', (e) => {
+    const trigger = e.target.closest('[data-target]');
+    if (trigger) {
+      const targetId = trigger.dataset.target;
+      const targetModal = document.getElementById(targetId);
+      if (targetModal) {
+        overlay.style.display = 'block';
+        targetModal.style.display = targetModal.classList.contains('bottom-sheet') ? 'block' : 'flex';
+        // Trigger pool render when opening pool modal
+        if (targetId === 'pool-modal' && typeof renderPool === 'function') renderPool();
+        // Small reflow delay for CSS transition
+        setTimeout(() => {
+          overlay.classList.add('show');
+          targetModal.classList.add('show');
+        }, 10);
+      }
+    }
   });
 
-  if (poolSearch) {
-    poolSearch.addEventListener('input', debounce(renderPool, 200));
-  }
-  
-  if (openPoolModalBtn) {
-    openPoolModalBtn.addEventListener('click', () => {
-      if (typeof renderPool === 'function') renderPool();
-      settingsMenu.classList.remove('show');
-      poolModal.style.display = 'flex';
-      setTimeout(() => {
-        poolModal.classList.add('show');
-      }, 10);
-    });
-  }
+  // ── Universal Modal Closer (.btn-close — closes the nearest modal) ─────────
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('.btn-close')) {
+      const modalToClose = e.target.closest('.modal, .bottom-sheet');
+      if (modalToClose) {
+        modalToClose.classList.remove('show');
+        // If it's the pool modal closing, reset selection mode
+        if (modalToClose.id === 'pool-modal') {
+          isSelectionMode = false;
+          if (typeof renderPool === 'function') renderPool();
+        }
+        setTimeout(() => {
+          modalToClose.style.display = 'none';
+          // Check if ANY modals are still visible in the stack. If not, hide overlay.
+          if (!document.querySelector('.modal.show, .bottom-sheet.show')) {
+            overlay.classList.remove('show');
+            setTimeout(() => overlay.style.display = 'none', 150);
+          }
+        }, 150);
+      }
+    }
+  });
 
-  if (closePoolModalBtn) {
-    closePoolModalBtn.addEventListener('click', () => {
-      isSelectionMode = false;
-      if (typeof renderPool === 'function') renderPool();
-      poolModal.classList.remove('show');
-      overlay.classList.remove('show');
-      setTimeout(() => {
-        poolModal.style.display = 'none';
-        overlay.style.display = 'none';
-      }, 150);
-    });
-  }
-
-  if (poolSearch) {
-    poolSearch.addEventListener('input', debounce(renderPool, 200));
-  }
-
+  // ── Universal Overlay Click (closes entire stack) ──────────────────────────
   overlay.addEventListener('click', () => {
     isSelectionMode = false;
     if (typeof renderPool === 'function') renderPool();
-    settingsMenu.classList.remove('show');
-    bulkImportModal.classList.remove('show');
-    if (poolModal) poolModal.classList.remove('show');
-    overlay.classList.remove('show');
-    setTimeout(() => {
-      bulkImportModal.style.display = 'none';
-      if (poolModal) poolModal.style.display = 'none';
-      overlay.style.display = 'none';
-    }, 150);
-  });
 
-  openBulkImportBtn.addEventListener('click', () => {
-    settingsMenu.classList.remove('show');
-    bulkImportModal.style.display = 'flex';
-    setTimeout(() => {
-      bulkImportModal.classList.add('show');
-    }, 10);
-  });
+    document.querySelectorAll('.modal.show, .bottom-sheet.show').forEach(m => {
+      m.classList.remove('show');
+      setTimeout(() => m.style.display = 'none', 150);
+    });
 
-  closeBulkImportModalBtn.addEventListener('click', () => {
-    bulkImportModal.classList.remove('show');
     overlay.classList.remove('show');
-    setTimeout(() => {
-      bulkImportModal.style.display = 'none';
-      overlay.style.display = 'none';
-    }, 150);
+    setTimeout(() => overlay.style.display = 'none', 150);
   });
 
   // Load proxies and active state

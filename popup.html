@@ -22,7 +22,7 @@
       </div>
     </div>
     <div class="top-bar">
-      <button id="settingsBtn" title="Settings">⚙️</button>
+      <button id="settingsBtn" title="Settings" data-target="settings-menu">⚙️</button>
       <button id="toggleFormBtn">Add New Proxy</button>
       <button id="themeToggleBtn" title="Toggle Theme">🌙</button>
     </div>
@@ -61,15 +61,15 @@
       <h2 style="margin: 0;">Settings</h2>
     </div>
     
-    <div class="menu-item" id="openDomainModalBtn" style="margin-bottom: 8px;">🌐 Linked Sites</div>
-    <div class="menu-item" id="openPoolModalBtn" style="margin-bottom: 8px;">🗃️ Manage Proxy Pool</div>
+    <div class="menu-item" id="openDomainModalBtn" data-target="domain-modal" style="margin-bottom: 8px;">🌐 Linked Sites</div>
+    <div class="menu-item" id="openPoolModalBtn" data-target="pool-modal" style="margin-bottom: 8px;">🗃️ Manage Proxy Pool</div>
   </div>
 
   <div id="pool-modal" class="modal">
     <div class="modal-header">
       <h2>Proxy Pool</h2>
       <div style="display: flex; gap: 8px; align-items: center;">
-        <button id="openBulkImportBtn" class="btn-icon" style="background: none; border: none; cursor: pointer; color: var(--text);">📥 Import</button>
+        <button id="openBulkImportBtn" data-target="bulk-import-modal" class="btn-icon" style="background: none; border: none; cursor: pointer; color: var(--text);">📥 Import</button>
         <button id="closePoolModalBtn" class="btn-close">✖</button>
       </div>
     </div>
