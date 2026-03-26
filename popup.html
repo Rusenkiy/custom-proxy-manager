@@ -80,7 +80,10 @@
   <div id="domain-modal" class="modal">
     <div class="modal-header">
       <h2 style="margin: 0;">Linked Sites</h2>
-      <button id="closeDomainModalBtn" class="btn-close">✖</button>
+      <div style="display: flex; gap: 8px;">
+        <button id="openManualDomainBtn" class="btn-icon" style="font-size: 13px; font-weight: bold; background: var(--bg); padding: 4px 8px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--border);">➕ Add</button>
+        <button id="closeDomainModalBtn" class="btn-close">✖</button>
+      </div>
     </div>
     <input type="text" id="domain-search" placeholder="Search matching domains..." style="flex-shrink: 0; margin-bottom: 10px;">
     <div id="domain-list" class="scrollable-area" style="padding:0; margin-top:0;"></div>
@@ -95,6 +98,19 @@
       <textarea id="bulk-proxies-input" placeholder="ip:port:user:pass (one per line)" required style="flex-grow: 1; margin-bottom: 10px;"></textarea>
       <button type="submit">Confirm Import</button>
     </form>
+  </div>
+
+  <div id="manual-domain-backdrop" class="custom-backdrop">
+    <div class="custom-dialog">
+      <div class="modal-header" style="margin-bottom: 15px;">
+        <h2 style="margin: 0; font-size: 15px;">Add Custom Domain</h2>
+        <button id="closeManualDomainBtn" class="btn-close" style="padding: 0; line-height: 1;">✖</button>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <input type="text" id="manual-domain-input" placeholder="e.g., api.twitter.com" style="width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid var(--input-border); border-radius: 4px; background-color: var(--input-bg); color: var(--text);">
+        <button id="proceedToProxySelectionBtn" style="width: 100%; padding: 8px;">Select Proxy</button>
+      </div>
+    </div>
   </div>
 
   <script src="popup.js"></script>

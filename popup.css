@@ -632,3 +632,32 @@
     .toast.info {
       border-left: 3px solid #007bff;
     }
+
+.custom-backdrop {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 9999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s ease-out;
+}
+.custom-backdrop.show {
+  display: flex;
+  opacity: 1;
+}
+.custom-dialog {
+  background: var(--bg);
+  width: 320px;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  transform: scale(0.95);
+  transition: transform 0.15s ease-out;
+}
+.custom-backdrop.show .custom-dialog {
+  transform: scale(1);
+}
