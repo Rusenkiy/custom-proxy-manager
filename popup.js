@@ -630,8 +630,10 @@ document.addEventListener('DOMContentLoaded', () => {
           if (url.protocol.startsWith('http')) {
             const domainEl = document.getElementById('current-domain');
             if (domainEl) {
-              domainEl.textContent = url.hostname;
-              currentDomainToBind = url.hostname;
+              let host = url.hostname;
+              if (host.startsWith('www.')) host = host.slice(4);
+              currentDomainToBind = host;
+              domainEl.textContent = host;
               if (footerBindBtn) {
                 footerBindBtn.style.display = 'block';
                 updateFooterLinkStatus();

@@ -61,17 +61,29 @@
       <h2 style="margin: 0;">Settings</h2>
     </div>
     
-    <div class="menu-item" id="openBulkImportBtn" style="margin-bottom: 12px;">📥 Bulk Import</div>
+    <div class="menu-item" id="openDomainModalBtn" style="margin-bottom: 8px;">🌐 Linked Sites</div>
     <div class="menu-item" id="openPoolModalBtn" style="margin-bottom: 8px;">🗃️ Manage Proxy Pool</div>
   </div>
 
   <div id="pool-modal" class="modal">
     <div class="modal-header">
       <h2>Proxy Pool</h2>
-      <button id="closePoolModalBtn" class="btn-close">✖</button>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <button id="openBulkImportBtn" class="btn-icon" style="background: none; border: none; cursor: pointer; color: var(--text);">📥 Import</button>
+        <button id="closePoolModalBtn" class="btn-close">✖</button>
+      </div>
     </div>
     <input type="text" id="pool-search" placeholder="Search by name or IP..." style="flex-shrink: 0; margin-bottom: 10px;">
     <div id="pool-list"></div>
+  </div>
+
+  <div id="domain-modal" class="modal">
+    <div class="modal-header">
+      <h2 style="margin: 0;">Linked Sites</h2>
+      <button id="closeDomainModalBtn" class="btn-close">✖</button>
+    </div>
+    <input type="text" id="domain-search" placeholder="Search matching domains..." style="flex-shrink: 0; margin-bottom: 10px;">
+    <div id="domain-list" class="scrollable-area" style="padding:0; margin-top:0;"></div>
   </div>
 
   <div id="bulk-import-modal" class="modal">
