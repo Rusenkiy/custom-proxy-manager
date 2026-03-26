@@ -951,4 +951,145 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // ── Domain Manager ────────────────────────────────────────────────────────
+
+  function renderDomainManager() {
+    const domainListEl = document.getElementById('domain-list');
+    const domainSearch = document.getElementById('domain-search');
+    if (!domainListEl) return;
+
+    const query = domainSearch && domainSearch.value ? domainSearch.value.toLowerCase().trim() : '';
+    domainListEl.innerHTML = '';
+    const fragment = document.createDocumentFragment();
+
+    let hasDomains = false;
+    proxies.forEach(proxy => {
+      if (proxy.mappedDomains && proxy.mappedDomains.length > 0) {
+        proxy.mappedDomains.forEach(domain => {
+          if (query && !domain.toLowerCase().includes(query)) return;
+          hasDomains = true;
+
+          const el = document.createElement('div');
+          el.className = 'pool-item';
+          el.style.display = 'flex';
+          el.style.justifyContent = 'space-between';
+          el.style.alignItems = 'center';
+          el.dataset.id = proxy.id;
+
+          const infoDiv = document.createElement('div');
+          infoDiv.style.flexGrow = '1';
+          infoDiv.style.display = 'flex';
+          infoDiv.style.alignItems = 'center';
+          infoDiv.style.gap = '8px';
+
+          const domainBadge = document.createElement('div');
+          domainBadge.className = 'domain-badge';
+          domainBadge.textContent = domain.charAt(0).toUpperCase();
+          domainBadge.style.cursor = 'default';
+
+          const textDiv = document.createElement('div');
+          textDiv.style.display = 'flex';
+          textDiv.style.flexDirection = 'column';
+
+          const domainSpan = document.createElement('span');
+          domainSpan.style.fontWeight = '500';
+          domainSpan.textContent = domain;
+          domainSpan.style.color = 'var(--text)';
+
+          const proxyLinkSpan = document.createElement('span');
+          proxyLinkSpan.style.fontSize = '11px';
+          proxyLinkSpan.style.color = 'var(--text-muted)';
+          proxyLinkSpan.textContent = `Attached to: ${proxy.name || proxy.host}`;
+
+          textDiv.appendChild(domainSpan);
+          textDiv.appendChild(proxyLinkSpan);
+          infoDiv.appendChild(domainBadge);
+          infoDiv.appendChild(textDiv);
+
+          const actionsDiv = document.createElement('div');
+          const unlinkBtn = document.createElement('button');
+          unlinkBtn.className = 'btn-delete pool-del-btn';
+          unlinkBtn.dataset.action = 'unlink';
+          unlinkBtn.dataset.domain = domain;
+          unlinkBtn.textContent = '🗑️';
+
+          actionsDiv.appendChild(unlinkBtn);
+          el.appendChild(infoDiv);
+          el.appendChild(actionsDiv);
+          fragment.appendChild(el);
+        });
+      }
+    });
+
+    if (!hasDomains) {
+      domainListEl.innerHTML = '<div style="padding: 15px; text-align: center; color: var(--text-muted); font-size: 13px;">No linked sites found.</div>';
+    } else {
+      domainListEl.appendChild(fragment);
+    }
+  }
+
+  // Search input → debounced re-render
+  const domainSearchEl = document.getElementById('domain-search');
+  if (domainSearchEl) {
+    domainSearchEl.addEventListener('input', debounce(() => renderDomainManager(), 200));
+  }
+
+  // Auto-render when domain-modal is opened via data-target
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-target="domain-modal"]')) {
+      renderDomainManager();
+    }
+  });
+
+  // Unlink delegation inside #domain-list
+  const domainListContainer = document.getElementById('domain-list');
+  if (domainListContainer) {
+    domainListContainer.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-action="unlink"]');
+      if (!btn) return;
+
+      const item = btn.closest('.pool-item');
+      if (!item) return;
+
+      const proxyId = item.dataset.id;
+      const domain = btn.dataset.domain;
+      const proxy = proxies.find(p => p.id === proxyId);
+      if (!proxy || !domain) return;
+
+      if (btn.classList.contains('unlink-confirm')) {
+        proxy.mappedDomains = proxy.mappedDomains.filter(d => d !== domain);
+        saveProxies();
+
+        item.style.height = item.offsetHeight + 'px';
+        item.classList.add('removing');
+        requestAnimationFrame(() => item.classList.add('removing-active'));
+
+        setTimeout(() => {
+          renderDomainManager();
+          renderProxies();
+          if (typeof renderPool === 'function') renderPool();
+          if (typeof updateFooterLinkStatus === 'function') updateFooterLinkStatus();
+          chrome.runtime.sendMessage({ action: 'refreshConfig' });
+        }, 300);
+      } else {
+        document.querySelectorAll('#domain-list .unlink-confirm').forEach(b => {
+          b.classList.remove('unlink-confirm');
+          b.textContent = '🗑️';
+        });
+
+        btn.classList.add('unlink-confirm');
+        btn.textContent = 'Unlink?';
+
+        const resetUnlink = () => {
+          if (btn.classList.contains('unlink-confirm')) {
+            btn.classList.remove('unlink-confirm');
+            btn.textContent = '🗑️';
+          }
+          btn.removeEventListener('mouseleave', resetUnlink);
+        };
+        btn.addEventListener('mouseleave', resetUnlink, { once: true });
+      }
+    });
+  }
+
 });
