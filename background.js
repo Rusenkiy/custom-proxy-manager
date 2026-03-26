@@ -177,6 +177,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       } else {
         chrome.action.setBadgeText({ text: "" });
       }
+      chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+        if (tabs[0]) updateBadgeForTab(tabs[0].id);
+      });
       sendResponse({ success: true });
     });
     return true; 
@@ -186,6 +189,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     cachedAuth = null;
     applyConfig(null).then(() => {
       chrome.action.setBadgeText({ text: "" });
+      chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+        if (tabs[0]) updateBadgeForTab(tabs[0].id);
+      });
       sendResponse({ success: true });
     });
     return true;
@@ -197,7 +203,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         ? data.proxies.find((p) => p.id === data.activeProxyId) 
         : null;
       applyConfig(activeProxy).then(() => {
-        sendResponse({ success: true });
+      chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+        if (tabs[0]) updateBadgeForTab(tabs[0].id);
+      });
+      sendResponse({ success: true });
       });
     });
     return true;
@@ -288,3 +297,51 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 // Initialize cache immediately on SW wake
 initAuthCache();
+
+
+async function updateBadgeForTab(tabId) {
+  try {
+    const data = await chrome.storage.local.get(['proxies', 'activeProxyId']);
+    const proxies = data.proxies || [];
+    const isGlobalActive = !!data.activeProxyId;
+
+    const tab = await chrome.tabs.get(tabId);
+    
+    // Safely handle chrome:// or empty tabs
+    if (!tab || !tab.url || tab.url.startsWith('chrome')) {
+      if (isGlobalActive) {
+        chrome.action.setBadgeText({ text: "ON", tabId: tabId });
+        chrome.action.setBadgeBackgroundColor({ color: "#4CAF50", tabId: tabId });
+      } else {
+        chrome.action.setBadgeText({ text: "", tabId: tabId });
+      }
+      return;
+    }
+
+    const url = new URL(tab.url);
+    const isMapped = proxies.some(p => p.mappedDomains && p.mappedDomains.includes(url.hostname));
+    
+    // Explicitly enforce the badge for the current tab
+    if (isMapped) {
+      chrome.action.setBadgeText({ text: "MAP", tabId: tabId });
+      chrome.action.setBadgeBackgroundColor({ color: "#007bff", tabId: tabId });
+    } else if (isGlobalActive) {
+      chrome.action.setBadgeText({ text: "ON", tabId: tabId });
+      chrome.action.setBadgeBackgroundColor({ color: "#4CAF50", tabId: tabId });
+    } else {
+      chrome.action.setBadgeText({ text: "", tabId: tabId });
+    }
+  } catch (e) {
+    // Ignore invalid tabs
+  }
+}
+
+chrome.tabs.onActivated.addListener((info) => updateBadgeForTab(info.tabId));
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  // Fire on 'loading' state to immediately restore the tab-specific badge during a refresh, 
+  // preventing the global badge from flashing.
+  if (changeInfo.status === 'loading' || changeInfo.url || changeInfo.status === 'complete') {
+    updateBadgeForTab(tabId);
+  }
+});
+
