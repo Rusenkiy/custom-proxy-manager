@@ -661,3 +661,6 @@
 .custom-backdrop.show .custom-dialog {
   transform: scale(1);
 }
+
+#pool-modal { z-index: 105 !important; }
+#bulk-import-modal { z-index: 110 !important; }

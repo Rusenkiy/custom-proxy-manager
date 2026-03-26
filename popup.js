@@ -907,13 +907,17 @@ document.addEventListener('DOMContentLoaded', () => {
         
         isSelectionMode = false;
         renderPool();
-        const poolModal = document.getElementById('pool-modal');
-        const overlay = document.getElementById('overlay');
+        if (typeof renderDomainManager === 'function') renderDomainManager(); // Refresh domains
+        
         if (poolModal) poolModal.classList.remove('show');
-        if (overlay) overlay.classList.remove('show');
+        
+        // Only close overlay if no other modals (like domain-modal) are left
+        const otherModalsOpen = document.querySelectorAll('.modal.show:not(#pool-modal), .bottom-sheet.show').length > 0;
+        if (!otherModalsOpen && overlay) overlay.classList.remove('show');
+        
         setTimeout(() => {
           if (poolModal) poolModal.style.display = 'none';
-          if (overlay) overlay.style.display = 'none';
+          if (!otherModalsOpen && overlay) overlay.style.display = 'none';
         }, 150);
       } else if (btn.dataset.action === 'pin') {
         proxy.isPinned = !proxy.isPinned;
@@ -1088,6 +1092,60 @@ document.addEventListener('DOMContentLoaded', () => {
           btn.removeEventListener('mouseleave', resetUnlink);
         };
         btn.addEventListener('mouseleave', resetUnlink, { once: true });
+      }
+    });
+  }
+
+  // --- Manual Domain Manager Custom Modal Logic ---
+  const openManualDomainBtn = document.getElementById('openManualDomainBtn');
+  const closeManualDomainBtn = document.getElementById('closeManualDomainBtn');
+  const manualDomainBackdrop = document.getElementById('manual-domain-backdrop');
+  const manualDomainInput = document.getElementById('manual-domain-input');
+  const proceedToProxySelectionBtn = document.getElementById('proceedToProxySelectionBtn');
+
+  if (openManualDomainBtn && manualDomainBackdrop) {
+    openManualDomainBtn.addEventListener('click', () => {
+      manualDomainBackdrop.style.display = 'flex';
+      setTimeout(() => manualDomainBackdrop.classList.add('show'), 10);
+    });
+  }
+
+  const closeCustomModal = () => {
+    if (!manualDomainBackdrop) return;
+    manualDomainBackdrop.classList.remove('show');
+    setTimeout(() => manualDomainBackdrop.style.display = 'none', 150);
+  };
+
+  if (closeManualDomainBtn) {
+    closeManualDomainBtn.addEventListener('click', closeCustomModal);
+  }
+
+  if (manualDomainBackdrop) {
+    manualDomainBackdrop.addEventListener('click', (e) => {
+      if (e.target === manualDomainBackdrop) closeCustomModal();
+    });
+  }
+
+  if (proceedToProxySelectionBtn && manualDomainInput) {
+    proceedToProxySelectionBtn.addEventListener('click', () => {
+      let domain = manualDomainInput.value.trim().toLowerCase();
+      if (!domain) return;
+      
+      try {
+        if (domain.startsWith('http')) domain = new URL(domain).hostname;
+      } catch (e) {}
+      if (domain.startsWith('www.')) domain = domain.slice(4);
+
+      currentDomainToBind = domain;
+      isSelectionMode = true;
+      manualDomainInput.value = '';
+
+      closeCustomModal();
+      
+      if (poolModal) {
+        poolModal.style.display = 'flex';
+        if (typeof renderPool === 'function') renderPool();
+        setTimeout(() => poolModal.classList.add('show'), 10);
       }
     });
   }
