@@ -1,4 +1,18 @@
 let cachedAuth = null;
+let cachedProxies = [];
+let cachedActiveProxyId = null;
+
+chrome.storage.onChanged.addListener((changes, namespace) => {
+  if (namespace === 'local') {
+    if (changes.proxies) cachedProxies = changes.proxies.newValue || [];
+    if (changes.activeProxyId !== undefined) cachedActiveProxyId = changes.activeProxyId.newValue || null;
+  }
+});
+
+chrome.storage.local.get(['proxies', 'activeProxyId'], (result) => {
+  cachedProxies = result.proxies || [];
+  cachedActiveProxyId = result.activeProxyId || null;
+});
 
 function initAuthCache() {
   chrome.storage.local.get(['activeProxyId', 'proxies'], (result) => {
@@ -301,9 +315,8 @@ initAuthCache();
 
 async function updateBadgeForTab(tabId) {
   try {
-    const data = await chrome.storage.local.get(['proxies', 'activeProxyId']);
-    const proxies = data.proxies || [];
-    const isGlobalActive = !!data.activeProxyId;
+    const proxies = cachedProxies;
+    const isGlobalActive = !!cachedActiveProxyId;
 
     const tab = await chrome.tabs.get(tabId);
     
