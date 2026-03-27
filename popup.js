@@ -645,6 +645,53 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  function handleInlineEdit(btn, item, proxy) {
+    const nameContainer = btn.closest('.' + (item.classList.contains('proxy-item') ? 'proxy-name-container' : 'pool-name'));
+    if (!nameContainer) return;
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = proxy.name || '';
+    input.style.width = '120px';
+    input.style.fontSize = 'inherit';
+    input.style.fontFamily = 'inherit';
+    input.style.padding = '0';
+    input.style.background = 'transparent';
+    input.style.border = 'none';
+    input.style.borderBottom = '1px solid var(--text-muted)';
+    input.style.outline = 'none';
+    input.style.color = 'var(--text)';
+
+    nameContainer.innerHTML = '';
+    nameContainer.appendChild(input);
+
+    input.focus();
+    input.select();
+
+    let isSaving = false;
+    const saveName = () => {
+      if (isSaving) return;
+      isSaving = true;
+      const newName = input.value.trim();
+      if (newName) {
+        proxy.name = newName;
+        saveProxies();
+      }
+      renderProxies();
+      if (typeof renderPool === 'function') renderPool();
+    };
+
+    input.addEventListener('blur', saveName);
+    input.addEventListener('keydown', (evt) => {
+      if (evt.key === 'Enter') saveName();
+      if (evt.key === 'Escape') {
+        isSaving = true;
+        renderProxies();
+        if (typeof renderPool === 'function') renderPool();
+      }
+    });
+  }
+
   let confirmTimeout;
   if (proxyListEl && !proxyListEl.dataset.delegated) {
     proxyListEl.dataset.delegated = 'true';
@@ -660,50 +707,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!proxy) return;
 
             if (btn.dataset.action === 'edit') {
-        const nameContainer = btn.closest('.' + (item.classList.contains('proxy-item') ? 'proxy-name-container' : 'pool-name'));
-        if (!nameContainer) return;
-        
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.value = proxy.name || '';
-        input.style.width = '120px';
-        input.style.fontSize = 'inherit';
-        input.style.fontFamily = 'inherit';
-        input.style.padding = '0';
-        input.style.background = 'transparent';
-        input.style.border = 'none';
-        input.style.borderBottom = '1px solid var(--text-muted)';
-        input.style.outline = 'none';
-        input.style.color = 'var(--text)';
-        
-        nameContainer.innerHTML = '';
-        nameContainer.appendChild(input);
-        
-        input.focus();
-        input.select();
-        
-        let isSaving = false;
-        const saveName = () => {
-          if (isSaving) return;
-          isSaving = true;
-          const newName = input.value.trim();
-          if (newName) {
-            proxy.name = newName;
-            saveProxies();
-          }
-          renderProxies();
-          if (typeof renderPool === 'function') renderPool();
-        };
-        
-        input.addEventListener('blur', saveName);
-        input.addEventListener('keydown', (evt) => {
-          if (evt.key === 'Enter') saveName();
-          if (evt.key === 'Escape') {
-            isSaving = true;
-            renderProxies();
-            if (typeof renderPool === 'function') renderPool();
-          }
-        });
+        handleInlineEdit(btn, item, proxy);
       } else if (btn.dataset.action === 'unlink') {
         const domain = btn.dataset.domain;
         if (!domain) return;
@@ -814,50 +818,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!proxy) return;
 
             if (btn.dataset.action === 'edit') {
-        const nameContainer = btn.closest('.' + (item.classList.contains('proxy-item') ? 'proxy-name-container' : 'pool-name'));
-        if (!nameContainer) return;
-        
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.value = proxy.name || '';
-        input.style.width = '120px';
-        input.style.fontSize = 'inherit';
-        input.style.fontFamily = 'inherit';
-        input.style.padding = '0';
-        input.style.background = 'transparent';
-        input.style.border = 'none';
-        input.style.borderBottom = '1px solid var(--text-muted)';
-        input.style.outline = 'none';
-        input.style.color = 'var(--text)';
-        
-        nameContainer.innerHTML = '';
-        nameContainer.appendChild(input);
-        
-        input.focus();
-        input.select();
-        
-        let isSaving = false;
-        const saveName = () => {
-          if (isSaving) return;
-          isSaving = true;
-          const newName = input.value.trim();
-          if (newName) {
-            proxy.name = newName;
-            saveProxies();
-          }
-          renderProxies();
-          if (typeof renderPool === 'function') renderPool();
-        };
-        
-        input.addEventListener('blur', saveName);
-        input.addEventListener('keydown', (evt) => {
-          if (evt.key === 'Enter') saveName();
-          if (evt.key === 'Escape') {
-            isSaving = true;
-            renderProxies();
-            if (typeof renderPool === 'function') renderPool();
-          }
-        });
+        handleInlineEdit(btn, item, proxy);
       } else if (btn.dataset.action === 'unlink') {
         const domain = btn.dataset.domain;
         if (!domain) return;
