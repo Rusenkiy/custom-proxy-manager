@@ -47,13 +47,23 @@ chrome.runtime.onStartup.addListener(() => {
   });
 });
 
-async function applyConfig(proxy) {
+async function applyConfig(proxy, pingProxy = null) {
   const data = await chrome.storage.local.get(['adblockEnabled', 'proxies']);
   const adblock = !!data.adblockEnabled;
   const proxies = data.proxies || [];
 
   let mappingRules = "";
   let hasMappings = false;
+
+  // --- PING OVERRIDE LOGIC (Highest Priority) ---
+  if (pingProxy) {
+    hasMappings = true;
+    let pType = pingProxy.type ? pingProxy.type.toUpperCase() : "HTTP";
+    if (pType === "HTTP" || pType === "HTTPS") pType = "PROXY";
+    if (pType === "SOCKS") pType = "SOCKS5";
+    mappingRules += `\n      if (shExpMatch(host, "api.ipify.org")) return "${pType} ${pingProxy.host}:${pingProxy.port}";`;
+  }
+  // ----------------------------------------------
 
   proxies.forEach(p => {
     if (p.mappedDomains && p.mappedDomains.length > 0) {
@@ -261,14 +271,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
   if (request.action === 'pingProxy') {
     async function executePingTest() {
-      const proxy = request.proxy;
+      const testProxy = request.proxy;
       
-      if (proxy && proxy.username) {
-        cachedAuth = { username: proxy.username, password: proxy.password };
+      // 1. Fetch current global state so we don't break user's active connection
+      const data = await chrome.storage.local.get(['activeProxyId', 'proxies']);
+      const activeProxy = (data.proxies && data.activeProxyId) 
+        ? data.proxies.find((p) => p.id === data.activeProxyId) 
+        : null;
+
+      // 2. Set auth for ping test
+      if (testProxy && testProxy.username) {
+        cachedAuth = { username: testProxy.username, password: testProxy.password };
       }
+      await chrome.storage.local.set({ pingProxy: testProxy });
       
-      await chrome.storage.local.set({ pingProxy: proxy });
-      await applyConfig(proxy);
+      // 3. Apply hybrid config: activeProxy handles normal traffic, testProxy handles api.ipify.org
+      await applyConfig(activeProxy, testProxy);
       
       let pingSuccess = false;
       try {
@@ -281,28 +299,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         });
         
         clearTimeout(timeoutId);
-        if (response.ok) {
-           pingSuccess = true;
-        }
+        if (response.ok) pingSuccess = true;
       } catch (err) {
         console.error("Ping failed:", err);
       }
       
+      // 4. Cleanup and restore normal auth/routing
       await chrome.storage.local.remove('pingProxy');
       
-      chrome.storage.local.get(['activeProxyId', 'proxies'], async (data) => {
-        const activeProxy = (data.proxies && data.activeProxyId) 
-          ? data.proxies.find((p) => p.id === data.activeProxyId) 
-          : null;
-          
-        if (activeProxy && activeProxy.username) {
-          cachedAuth = { username: activeProxy.username, password: activeProxy.password };
-        } else {
-          cachedAuth = null;
-        }
-        await applyConfig(activeProxy);
-        sendResponse({ success: pingSuccess });
-      });
+      if (activeProxy && activeProxy.username) {
+        cachedAuth = { username: activeProxy.username, password: activeProxy.password };
+      } else {
+        cachedAuth = null;
+      }
+      await applyConfig(activeProxy, null);
+      
+      sendResponse({ success: pingSuccess });
     }
     
     executePingTest();
