@@ -664,3 +664,34 @@
 
 #pool-modal { z-index: 105 !important; }
 #bulk-import-modal { z-index: 110 !important; }
+
+.btn-outline-small {
+  font-size: 13px;
+  font-weight: bold;
+  background: var(--bg);
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+.btn-outline-small:hover {
+  background: var(--btn-hover);
+}
+.pool-sel-btn {
+  background: #007bff;
+  color: #fff;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+.pool-sel-btn:hover {
+  background: #0056b3;
+}

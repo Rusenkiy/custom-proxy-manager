@@ -569,12 +569,6 @@ document.addEventListener('DOMContentLoaded', () => {
         selectBtn.textContent = '🔗 Select';
         selectBtn.className = 'pool-sel-btn';
         selectBtn.dataset.action = 'select';
-        selectBtn.style.background = 'var(--accent, #007bff)';
-        selectBtn.style.color = '#fff';
-        selectBtn.style.border = 'none';
-        selectBtn.style.padding = '4px 8px';
-        selectBtn.style.borderRadius = '4px';
-        selectBtn.style.cursor = 'pointer';
         actions.appendChild(selectBtn);
       } else {
         const pinBtn = document.createElement('button');
